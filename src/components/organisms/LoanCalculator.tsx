@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-    View, StyleSheet, ScrollView, Platform, Alert,
+    View, StyleSheet, Platform, Alert,
     TextInput, TouchableOpacity, Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -96,12 +96,7 @@ export const LoanCalculator = () => {
                 end={{ x: 1, y: 1 }}
                 style={styles.container}
             >
-                <ScrollView
-                    testID="calculator-scroll"
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                >
+                <View testID="calculator-scroll" style={styles.scrollContent}>
                     {/* Sliders section — 24px horizontal padding */}
                     <View testID="slider-section" style={styles.sliderSection}>
 
@@ -195,7 +190,7 @@ export const LoanCalculator = () => {
                         </View>
 
                     </View>
-                </ScrollView>
+                </View>
             </LinearGradient>
         </View>
     );
@@ -203,10 +198,8 @@ export const LoanCalculator = () => {
 
 const styles = StyleSheet.create({
     webContainer: {
-        flex: 1,
         width: '100%',
         alignItems: 'center',
-        justifyContent: 'center',
     },
     container: {
         width: '100%',
