@@ -1,19 +1,21 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
     View, StyleSheet, Platform, Alert,
-    TextInput, TouchableOpacity, Keyboard,
+    Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LabeledSlider } from '../molecules/LabeledSlider';
 import { ListDetails } from '../molecules/ListDetails';
 import { Button } from '../atoms/Button';
-import { Text } from '../atoms/Text';
 import { ConfirmScreen } from '../../screens/ConfirmScreen';
+import { YouFormScreen } from '../../screens/YouFormScreen';
+import { CrossFadeSlideTransition } from '../animations/CrossFadeSlideTransition';
+import { sendLeadMetadata } from '../../services/GoogleSheetsService';
+import { getDeviceInfo } from '../../utils/deviceInfo';
 import {
     calculateLoan, CALCULATOR_CONFIG, formatCurrency,
     getTranche,
 } from '../../utils/calculatorLogic';
-import { submitLeadToCRM } from '../../services/GoogleSheetsService';
 import { Metrics } from '../../theme/Metrics';
 import { Colors } from '../../theme/Colors';
 
@@ -22,24 +24,22 @@ export const LoanCalculator = () => {
     const [months, setMonths] = useState(3);
     const [visualMonthsIdx, setVisualMonthsIdx] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [showConfirm, setShowConfirm] = useState(false);
-
+    // 3 states: 'calculator' | 'confirm' | 'youform'
+    const [screen, setScreen] = useState<'calculator' | 'confirm' | 'youform'>('calculator');
+    
     // Tap-to-edit amount
     const [editingAmount, setEditingAmount] = useState(false);
     const [rawInput, setRawInput] = useState('');
 
     const tranche = useMemo(() => getTranche(amount), [amount]);
 
-    // Ensure months is one of the allowed values for current tranche
     const effectiveMonths = useMemo(() => {
         if (tranche.allowedMonths.includes(months)) return months;
-        // If not allowed, pick the nearest one or first one
         return tranche.allowedMonths.reduce((prev, curr) =>
             Math.abs(curr - months) < Math.abs(prev - months) ? curr : prev,
         );
     }, [months, tranche.allowedMonths]);
 
-    // Sync visual slider when amount/tranche changes or months are snapped
     React.useEffect(() => {
         setVisualMonthsIdx(tranche.allowedMonths.indexOf(effectiveMonths));
     }, [effectiveMonths, tranche.allowedMonths]);
@@ -52,7 +52,6 @@ export const LoanCalculator = () => {
     const handleAmountChange = useCallback((val: number) => {
         const clamped = Math.min(Math.max(val, CALCULATOR_CONFIG.MIN_AMOUNT), CALCULATOR_CONFIG.MAX_AMOUNT);
         setAmount(clamped);
-        // Tranche will update via useMemo, months will be adjusted by effectiveMonths logic
     }, []);
 
     const handleMonthsChange = useCallback((val: number) => {
@@ -66,53 +65,35 @@ export const LoanCalculator = () => {
         Keyboard.dismiss();
     }, [rawInput, handleAmountChange]);
 
-    // Navigate to ConfirmScreen
     const handleSubmit = useCallback(() => {
         if (!loanDetails.isValid) {
             Alert.alert('Monto no permitido', 'Por favor selecciona un monto válido según los plazos disponibles.');
             return;
         }
-        setShowConfirm(true);
+        setScreen('confirm');
     }, [loanDetails.isValid]);
 
-    // Actual CRM submission (called from ConfirmScreen)
     const handleConfirm = useCallback(async () => {
-        setLoading(true);
-        const success = await submitLeadToCRM({
-            amount,
-            months: effectiveMonths,
-            monthlyQuota: loanDetails.monthlyQuota,
-            totalToReturn: loanDetails.totalToReturn,
-            prestaxGain: loanDetails.prestaxGain,
-            timestamp: new Date().toISOString(),
-        });
-        setLoading(false);
-        if (Platform.OS === 'web') {
-            window.alert(success ? '¡Solicitud registrada con éxito!' : 'Hubo un error');
-        } else {
-            Alert.alert(success ? 'Éxito' : 'Error', success ? '¡Solicitud registrada!' : 'Error al registrar');
-        }
-        if (success) setShowConfirm(false);
-    }, [amount, effectiveMonths, loanDetails]);
+        // 1. Capturar info del dispositivo
+        const { deviceModel, deviceOS } = getDeviceInfo();
+        const timestamp = new Date().toISOString();
+
+        // 2. Enviar metadata al Google Sheet (non-blocking — no detiene la UI)
+        sendLeadMetadata({
+            monto: amount,
+            cuotas: effectiveMonths,
+            deviceModel,
+            deviceOS,
+            timestamp,
+        }).catch(err => console.warn('Lead metadata send failed silently:', err));
+
+        // 3. Transicionar a YouForm inmediatamente, sin esperar la respuesta del server
+        setScreen('youform');
+    }, [amount, effectiveMonths]);
 
     const monthsLabel = effectiveMonths === 1 ? 'cuota' : 'cuotas';
 
-    // Show ConfirmScreen instead of calculator when user pressed "Continuar"
-    // ConfirmScreen es una pantalla completa, no va envuelta en webContainer
-    if (showConfirm) {
-        return (
-            <ConfirmScreen
-                amount={amount}
-                months={effectiveMonths}
-                monthlyQuota={loanDetails.monthlyQuota}
-                onBack={() => setShowConfirm(false)}
-                onConfirm={handleConfirm}
-                loading={loading}
-            />
-        );
-    }
-
-    return (
+    const renderCalculatorContent = (
         <View style={styles.webContainer}>
             <LinearGradient
                 colors={Colors.gradientCard as [string, string]}
@@ -121,10 +102,7 @@ export const LoanCalculator = () => {
                 style={styles.container}
             >
                 <View testID="calculator-scroll" style={styles.scrollContent}>
-                    {/* Sliders section — 24px horizontal padding */}
                     <View testID="slider-section" style={styles.sliderSection}>
-
-                        {/* Monto slider */}
                         <LabeledSlider
                             title="¿Cuánto necesitás?"
                             amount={formatCurrency(amount)}
@@ -146,7 +124,6 @@ export const LoanCalculator = () => {
                             onRawInputSubmit={commitAmountInput}
                         />
 
-                        {/* Cuotas slider — discrete values from allowedMonths but smooth motion */}
                         <LabeledSlider
                             title="¿En cuántas cuotas?"
                             amount={effectiveMonths.toString()}
@@ -156,7 +133,7 @@ export const LoanCalculator = () => {
                             value={visualMonthsIdx}
                             minimumValue={0}
                             maximumValue={tranche.allowedMonths.length - 1}
-                            step={amount === 500_000 ? 0 : 1} // Smooth only for Tier 1
+                            step={amount === 500_000 ? 0 : 1}
                             onValueChange={(val) => {
                                 setVisualMonthsIdx(val);
                                 const snapper = Math.round(val);
@@ -167,9 +144,7 @@ export const LoanCalculator = () => {
                         />
                     </View>
 
-                    {/* Summary section — 8px horizontal padding */}
                     <View testID="summary-section" style={styles.summarySection}>
-
                         <ListDetails
                             iconName="today"
                             label="Cuota Mensual"
@@ -209,14 +184,49 @@ export const LoanCalculator = () => {
                                     onPress={handleSubmit}
                                     loading={loading}
                                     disabled={!loanDetails.isValid}
+                                    variant="primary"
                                 />
                             </View>
                         </View>
-
                     </View>
                 </View>
             </LinearGradient>
         </View>
+    );
+
+    const renderConfirmScreen = (
+        <ConfirmScreen
+            amount={amount}
+            months={effectiveMonths}
+            monthlyQuota={loanDetails.monthlyQuota}
+            onBack={() => setScreen('calculator')}
+            onConfirm={handleConfirm}
+            loading={loading}
+        />
+    );
+
+    const renderYouForm = (
+        <YouFormScreen
+            amount={amount}
+            months={effectiveMonths}
+        />
+    );
+
+    // Encadenamos dos CrossFadeSlideTransition:
+    // calculator → confirm (showSecond = screen !== 'calculator')
+    // confirm → youform   (showSecond = screen === 'youform', dentro del secondaryScreen)
+    return (
+        <CrossFadeSlideTransition
+            showSecond={screen !== 'calculator'}
+            primaryScreen={renderCalculatorContent}
+            secondaryScreen={
+                <CrossFadeSlideTransition
+                    showSecond={screen === 'youform'}
+                    primaryScreen={renderConfirmScreen}
+                    secondaryScreen={renderYouForm}
+                />
+            }
+        />
     );
 };
 
@@ -247,7 +257,7 @@ const styles = StyleSheet.create({
     },
     primaryRow: {
         borderRadius: Metrics.borderRadius100,
-        paddingLeft: Metrics.padding16, // base 12 + 4px requested
+        paddingLeft: Metrics.padding16,
     },
     secondaryCard: {
         backgroundColor: Colors.secondary20,
@@ -262,7 +272,7 @@ const styles = StyleSheet.create({
     },
     secondaryRow: {
         height: Metrics.height32,
-        paddingLeft: Metrics.padding16,  // aligned with primaryRow icon
+        paddingLeft: Metrics.padding16,  
         paddingRight: Metrics.padding16,
     },
 });

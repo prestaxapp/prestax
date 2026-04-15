@@ -142,11 +142,32 @@ export const ConfirmScreen = ({
 
                             <View style={styles.requisitosContainer}>
                                 <View style={styles.badgeRow}>
-                                    <RequirementBadge label="6 Últimos IVAs" />
+                                    <RequirementBadge
+                                        label={
+                                            <Text variant="footnote">
+                                                <Text variant="footnote" style={{ fontFamily: 'Lufga-Medium' }}>6</Text>
+                                                {' Últimos IVAs'}
+                                            </Text>
+                                        }
+                                    />
                                     <Text style={styles.orText}>o</Text>
-                                    <RequirementBadge label="3 a 6 Últimos IPS" />
+                                    <RequirementBadge
+                                        label={
+                                            <Text variant="footnote">
+                                                <Text variant="footnote" style={{ fontFamily: 'Lufga-Medium' }}>3 a 6</Text>
+                                                {' Últimos IPS'}
+                                            </Text>
+                                        }
+                                    />
                                     <Text style={styles.orText}>o</Text>
-                                    <RequirementBadge label="6 Últimos extractos salariales" />
+                                    <RequirementBadge
+                                        label={
+                                            <Text variant="footnote">
+                                                <Text variant="footnote" style={{ fontFamily: 'Lufga-Medium' }}>6</Text>
+                                                {' Últimos extractos salariales'}
+                                            </Text>
+                                        }
+                                    />
                                 </View>
 
                                 <GradientSeparator style={styles.gradientLine} />

@@ -63,15 +63,15 @@ export const LoanDetailCard = ({ iconName, label, value }: LoanDetailCardProps) 
 const styles = StyleSheet.create({
     card: {
         flex: 1,
+        height: 100,
         backgroundColor: Colors.secondary20,
         borderRadius: 16,
-        paddingLeft: 11,
-        paddingRight: 14,
-        paddingVertical: 12,
+        paddingTop: 14,
+        paddingHorizontal: 14,
+        paddingBottom: 12,
         flexDirection: 'column',
-        justifyContent: 'center',
+        justifyContent: 'space-between', 
         alignItems: 'flex-start',
-        gap: 12, // Figma says gap 12px for the ListDetails stack
     },
     labelRow: {
         flexDirection: 'row',

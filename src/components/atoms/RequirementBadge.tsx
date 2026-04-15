@@ -12,7 +12,7 @@ import { Colors } from '../../theme/Colors';
 import { Metrics } from '../../theme/Metrics';
 
 interface RequirementBadgeProps {
-    label: string;
+    label: string | React.ReactNode;
 }
 
 export const RequirementBadge = ({ label }: RequirementBadgeProps) => {

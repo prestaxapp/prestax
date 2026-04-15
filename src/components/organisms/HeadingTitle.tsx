@@ -226,12 +226,10 @@ const styles = StyleSheet.create({
     containerMin: {
         width: '100%',
         paddingVertical: 16,
-        paddingHorizontal: 16,
     },
     containerMax: {
         width: '100%',
         paddingTop: 40,
-        paddingHorizontal: 16,
         paddingBottom: 20,
     },
     topRowSpaceBetween: {
@@ -346,7 +344,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingTop: 40,
         paddingBottom: 20,
-        paddingHorizontal: 16,
     },
     chatProfileRow: {
         flexDirection: 'row',
@@ -375,7 +372,6 @@ const styles = StyleSheet.create({
     containerSearch: {
         paddingTop: 40,
         paddingBottom: 20,
-        paddingHorizontal: 16,
         gap: 16,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255,255,255,0.1)',
