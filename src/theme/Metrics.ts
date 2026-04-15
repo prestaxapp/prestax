@@ -9,13 +9,16 @@ export const Metrics = {
 
     gap0: 0,
     gap4: 4,
+    gap7: 7,
     gap8: 8,
     gap12: 12,
     gap16: 16,
+    gap20: 20,
     gap24: 24,
     gap32: 32,
 
     height32: 32,
+    height36: 36,
     height56: 56,
 
     borderRadius16: 16,

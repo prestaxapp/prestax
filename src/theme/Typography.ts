@@ -10,9 +10,15 @@ export const Typography: Record<string, TextStyle> = {
 
     title1: { fontSize: 28, lineHeight: 34, fontFamily: 'Lufga-Medium' },
     title1Regular: { fontSize: 28, lineHeight: 34, fontFamily: 'Lufga-Regular' },
+    // Figma ConfirmScreen: line-height 100% (= fontSize)
+    title1Tight: { fontSize: 28, lineHeight: 28, fontFamily: 'Lufga-Medium' },
+    title1TightRegular: { fontSize: 28, lineHeight: 28, fontFamily: 'Lufga-Regular' },
 
     title2: { fontSize: 22, lineHeight: 28, fontFamily: 'Lufga-Medium' },
     title2Regular: { fontSize: 22, lineHeight: 28, fontFamily: 'Lufga-Regular' },
+    // Figma ConfirmScreen: line-height 100% (= fontSize)
+    title2Tight: { fontSize: 22, lineHeight: 22, fontFamily: 'Lufga-Medium' },
+    title2TightRegular: { fontSize: 22, lineHeight: 22, fontFamily: 'Lufga-Regular' },
 
     title3: { fontSize: 18, lineHeight: 24, fontFamily: 'Lufga-Medium' },
     title3Regular: { fontSize: 18, lineHeight: 24, fontFamily: 'Lufga-Regular' },  // ← used for questions

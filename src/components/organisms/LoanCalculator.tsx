@@ -8,6 +8,7 @@ import { LabeledSlider } from '../molecules/LabeledSlider';
 import { ListDetails } from '../molecules/ListDetails';
 import { Button } from '../atoms/Button';
 import { Text } from '../atoms/Text';
+import { ConfirmScreen } from '../../screens/ConfirmScreen';
 import {
     calculateLoan, CALCULATOR_CONFIG, formatCurrency,
     getTranche,
@@ -21,6 +22,7 @@ export const LoanCalculator = () => {
     const [months, setMonths] = useState(3);
     const [visualMonthsIdx, setVisualMonthsIdx] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     // Tap-to-edit amount
     const [editingAmount, setEditingAmount] = useState(false);
@@ -64,11 +66,17 @@ export const LoanCalculator = () => {
         Keyboard.dismiss();
     }, [rawInput, handleAmountChange]);
 
-    const handleSubmit = async () => {
+    // Navigate to ConfirmScreen
+    const handleSubmit = useCallback(() => {
         if (!loanDetails.isValid) {
             Alert.alert('Monto no permitido', 'Por favor selecciona un monto válido según los plazos disponibles.');
             return;
         }
+        setShowConfirm(true);
+    }, [loanDetails.isValid]);
+
+    // Actual CRM submission (called from ConfirmScreen)
+    const handleConfirm = useCallback(async () => {
         setLoading(true);
         const success = await submitLeadToCRM({
             amount,
@@ -84,9 +92,25 @@ export const LoanCalculator = () => {
         } else {
             Alert.alert(success ? 'Éxito' : 'Error', success ? '¡Solicitud registrada!' : 'Error al registrar');
         }
-    };
+        if (success) setShowConfirm(false);
+    }, [amount, effectiveMonths, loanDetails]);
 
     const monthsLabel = effectiveMonths === 1 ? 'cuota' : 'cuotas';
+
+    // Show ConfirmScreen instead of calculator when user pressed "Continuar"
+    // ConfirmScreen es una pantalla completa, no va envuelta en webContainer
+    if (showConfirm) {
+        return (
+            <ConfirmScreen
+                amount={amount}
+                months={effectiveMonths}
+                monthlyQuota={loanDetails.monthlyQuota}
+                onBack={() => setShowConfirm(false)}
+                onConfirm={handleConfirm}
+                loading={loading}
+            />
+        );
+    }
 
     return (
         <View style={styles.webContainer}>

@@ -11,6 +11,10 @@ import { IconEqual } from './icons/IconEqual';
 import { IconPaymentArrowDown } from './icons/IconPaymentArrowDown';
 import { IconPercentDiscount } from './icons/IconPercentDiscount';
 import { IconHeapSnapshot } from './icons/IconHeapSnapshot';
+import { IconHourglass } from './icons/IconHourglass';
+import { IconCalendarPick } from './icons/IconCalendarPick';
+import { IconState } from './icons/IconState';
+import { IconChevron } from './icons/IconChevron';
 
 // Registry — add new custom SVG components here
 const ICON_REGISTRY = {
@@ -26,6 +30,11 @@ const ICON_REGISTRY = {
     'payment_arrow_down': IconPaymentArrowDown,
     'percent_discount': IconPercentDiscount,
     'heap_snapshot': IconHeapSnapshot,
+    // New icons
+    'hourglass': IconHourglass,
+    'calendar.pick': IconCalendarPick,
+    'state': IconState,
+    'chevron-back': IconChevron,
 } as const;
 
 export type IconName = keyof typeof ICON_REGISTRY;
