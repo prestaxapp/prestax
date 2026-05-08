@@ -179,42 +179,42 @@ export const ConfirmScreen = ({
                             </View>
                         </View>
 
+                        {/* ── 4 y 5. Warning Message Container (Ahora dentro del scroll) ── */}
+                        <View style={styles.warningMessageContainer}>
+                            {/* Warning Box */}
+                            <View style={styles.warningBox}>
+                                <View style={styles.cornerCut} />
+                                <View style={styles.warningRow}>
+                                    <Icon name="state" size={20} color="white" />
+                                    <Text style={styles.warningTitle}>
+                                        ¡OJO!_  No se puede retroceder
+                                    </Text>
+                                </View>
+                                <Text style={styles.warningDesc}>
+                                    Asegúrese que los datos sean correctos
+                                </Text>
+                            </View>
+
+                            {/* Promo Box */}
+                            <View style={styles.promoBox}>
+                                <Image
+                                    source={require('../../assets/promo-digital.png')}
+                                    style={styles.promoImage}
+                                />
+                                <Text style={styles.promoTitle}>
+                                    100% Digital. Respuesta en -24h.
+                                </Text>
+                                <Text style={styles.promoDesc}>
+                                    Aprobación acelerada, sin papeles ni demoras.
+                                </Text>
+                            </View>
+                        </View>
+
                     </View>
                 </ScrollView>
 
-                {/* ── Bottom bar: Warning + FixedButtonBar pegados al fondo ── */}
+                {/* ── Bottom bar: FixedButtonBar pegado al fondo ── */}
                 <View style={styles.bottomBar}>
-                    {/* ── 4 y 5. Warning Message Container ────────────────── */}
-                    <View style={styles.warningMessageContainer}>
-                        {/* Warning Box */}
-                        <View style={styles.warningBox}>
-                            <View style={styles.cornerCut} />
-                            <View style={styles.warningRow}>
-                                <Icon name="state" size={20} color="white" />
-                                <Text style={styles.warningTitle}>
-                                    ¡OJO!_  No se puede retroceder
-                                </Text>
-                            </View>
-                            <Text style={styles.warningDesc}>
-                                Asegúrese que los datos sean correctos
-                            </Text>
-                        </View>
-
-                        {/* Promo Box */}
-                        <View style={styles.promoBox}>
-                            <Image
-                                source={require('../../assets/promo-digital.png')}
-                                style={styles.promoImage}
-                            />
-                            <Text style={styles.promoTitle}>
-                                100% Digital. Respuesta en -24h.
-                            </Text>
-                            <Text style={styles.promoDesc}>
-                                Aprobación acelerada, sin papeles ni demoras.
-                            </Text>
-                        </View>
-                    </View>
-
                     {/* ── 6. FixedButtonBar ─────────────────────────────── */}
                     <FixedButtonBar
                         primaryLabel={primaryLabel}
@@ -354,10 +354,10 @@ const styles = StyleSheet.create({
     // ── Warning Message Container ───────────────────────
     warningMessageContainer: {
         alignSelf: 'stretch',
-        paddingHorizontal: 16,
         borderBottomLeftRadius: 16,
         borderBottomRightRadius: 16,
         overflow: 'hidden',
+        marginTop: 12, // espacio desde requisitos
     },
     warningBox: {
         backgroundColor: 'rgba(255, 98, 83, 0.15)',

@@ -24,6 +24,7 @@ interface FixedButtonBarProps {
     primaryLabel: string;
     onPressPrimary: () => void;
     onPressBack: () => void;
+    backLabel?: string;
     loading?: boolean;
     disabled?: boolean;
 }
@@ -32,6 +33,7 @@ export const FixedButtonBar = ({
     primaryLabel,
     onPressPrimary,
     onPressBack,
+    backLabel = 'Atrás',
     loading = false,
     disabled = false,
 }: FixedButtonBarProps) => {
@@ -45,7 +47,7 @@ export const FixedButtonBar = ({
                 variant="primary"
             />
             <Button
-                title="Atrás"
+                title={backLabel}
                 onPress={onPressBack}
                 disabled={loading || disabled}
                 variant="text"

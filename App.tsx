@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { LoanCalculator } from './src/components/organisms/LoanCalculator';
 
+
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     'Lufga-ExtraLight': require('./assets/fonts/Lufga-ExtraLight.ttf'),
@@ -15,6 +16,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       <LoanCalculator />
+
     </View>
   );
 }

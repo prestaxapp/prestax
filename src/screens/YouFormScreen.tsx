@@ -5,7 +5,7 @@
  * Se muestra después de que el usuario confirma en ConfirmScreen.
  *
  * En web → usa <iframe> nativo.
- * En iOS/Android → usa <WebView> de react-native-webview (instalar si se necesita native).
+ * En iOS/Android → usa <WebView> de react-native-webview.
  *
  * ⚠️ Para cambiar el formulario, actualizar YOUFORM_URL abajo.
  */
@@ -15,9 +15,19 @@ import { View, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { Text } from '../components/atoms/Text';
 import { Colors } from '../theme/Colors';
 
+// Conditional import — only loaded on native platforms
+let WebView: any = null;
+if (Platform.OS !== 'web') {
+    try {
+        WebView = require('react-native-webview').default;
+    } catch {
+        // Will render fallback if package is missing
+    }
+}
+
 // ─── CONFIGURACIÓN ────────────────────────────────────────────────────────────
-// TODO: Reemplazar con la URL real de tu YouForm cuando la tengas disponible
 const YOUFORM_URL = 'https://app.youform.com/forms/vbyuoc6z';
+const PLACEHOLDER_URL = 'YOUFORM_URL_PENDIENTE';
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface YouFormScreenProps {
@@ -31,12 +41,12 @@ export const YouFormScreen: React.FC<YouFormScreenProps> = ({ amount, months }) 
     const [isLoading, setIsLoading] = useState(true);
 
     // Construir URL con query params para pre-fill si el form lo soporta
-    // YouForm soporta pre-fill via ?fieldName=value en algunos casos
-    const formUrl = YOUFORM_URL !== 'YOUFORM_URL_PENDIENTE'
+    const isPending = (YOUFORM_URL as string) === PLACEHOLDER_URL;
+    const formUrl = !isPending
         ? `${YOUFORM_URL}?amount=${amount ?? ''}&months=${months ?? ''}`
         : YOUFORM_URL;
 
-    if (YOUFORM_URL === 'YOUFORM_URL_PENDIENTE') {
+    if (isPending) {
         return (
             <View style={styles.placeholderContainer}>
                 <Text variant="headline" color="white" align="center">
@@ -75,15 +85,39 @@ export const YouFormScreen: React.FC<YouFormScreenProps> = ({ amount, months }) 
         );
     }
 
-    // Native fallback (requiere react-native-webview instalado)
-    // Si querés habilitarlo: npm install react-native-webview
+    // Native (iOS / Android): WebView de react-native-webview
+    if (WebView) {
+        return (
+            <View style={styles.container}>
+                {isLoading && (
+                    <View style={styles.loadingOverlay}>
+                        <ActivityIndicator size="large" color={Colors.primaryMain} />
+                    </View>
+                )}
+                <WebView
+                    source={{ uri: formUrl }}
+                    style={styles.webview}
+                    onLoadEnd={() => setIsLoading(false)}
+                    javaScriptEnabled
+                    domStorageEnabled
+                    startInLoadingState={false}
+                    allowsInlineMediaPlayback
+                    mediaPlaybackRequiresUserAction={false}
+                    scalesPageToFit={Platform.OS === 'android'}
+                />
+            </View>
+        );
+    }
+
+    // Fallback si react-native-webview no se pudo cargar
     return (
         <View style={styles.placeholderContainer}>
             <Text variant="headline" color="white" align="center">
                 Formulario
             </Text>
             <Text variant="body" style={styles.placeholderSubtitle} align="center">
-                Para native (iOS/Android), instalá{'\n'}react-native-webview
+                Error al cargar el formulario.{'\n'}
+                Verificá que react-native-webview esté instalado.
             </Text>
         </View>
     );
@@ -91,6 +125,10 @@ export const YouFormScreen: React.FC<YouFormScreenProps> = ({ amount, months }) 
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
+        backgroundColor: Colors.backgroundDefault,
+    },
+    webview: {
         flex: 1,
         backgroundColor: Colors.backgroundDefault,
     },

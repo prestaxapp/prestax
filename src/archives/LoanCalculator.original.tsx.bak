@@ -9,38 +9,29 @@ import { ListDetails } from '../molecules/ListDetails';
 import { Button } from '../atoms/Button';
 import { ConfirmScreen } from '../../screens/ConfirmScreen';
 import { YouFormScreen } from '../../screens/YouFormScreen';
-import { TerminosScreen } from '../../screens/TerminosScreen';
 import { CrossFadeSlideTransition } from '../animations/CrossFadeSlideTransition';
 import { sendLeadMetadata } from '../../services/GoogleSheetsService';
 import { getDeviceInfo } from '../../utils/deviceInfo';
 import {
-    calculateLoanV2, CALCULATOR_CONFIG_V2, formatCurrency,
-    getTrancheV2,
-} from '../../utils/calculatorLogicV2';
+    calculateLoan, CALCULATOR_CONFIG, formatCurrency,
+    getTranche,
+} from '../../utils/calculatorLogic';
 import { Metrics } from '../../theme/Metrics';
 import { Colors } from '../../theme/Colors';
 
-/**
- * LoanCalculator — versión vigente
- *
- * Rango: 1.000.000 → 5.000.000 Gs | Cuotas: 3 · 6 · 12
- * Lógica de cálculo idéntica a la versión original (French, TAE, TIN, gastos, IVA).
- *
- * Versión anterior archivada en: src/archives/LoanCalculator.original.tsx.bak
- */
 export const LoanCalculator = () => {
     const [amount, setAmount] = useState(1_000_000);
     const [months, setMonths] = useState(3);
     const [visualMonthsIdx, setVisualMonthsIdx] = useState(0);
     const [loading, setLoading] = useState(false);
-    // 4 states: 'calculator' | 'confirm' | 'terminos' | 'youform'
-    const [screen, setScreen] = useState<'calculator' | 'confirm' | 'terminos' | 'youform'>('calculator');
-
+    // 3 states: 'calculator' | 'confirm' | 'youform'
+    const [screen, setScreen] = useState<'calculator' | 'confirm' | 'youform'>('calculator');
+    
     // Tap-to-edit amount
     const [editingAmount, setEditingAmount] = useState(false);
     const [rawInput, setRawInput] = useState('');
 
-    const tranche = useMemo(() => getTrancheV2(amount), [amount]);
+    const tranche = useMemo(() => getTranche(amount), [amount]);
 
     const effectiveMonths = useMemo(() => {
         if (tranche.allowedMonths.includes(months)) return months;
@@ -54,12 +45,12 @@ export const LoanCalculator = () => {
     }, [effectiveMonths, tranche.allowedMonths]);
 
     const loanDetails = useMemo(
-        () => calculateLoanV2(amount, effectiveMonths),
+        () => calculateLoan(amount, effectiveMonths),
         [amount, effectiveMonths],
     );
 
     const handleAmountChange = useCallback((val: number) => {
-        const clamped = Math.min(Math.max(val, CALCULATOR_CONFIG_V2.MIN_AMOUNT), CALCULATOR_CONFIG_V2.MAX_AMOUNT);
+        const clamped = Math.min(Math.max(val, CALCULATOR_CONFIG.MIN_AMOUNT), CALCULATOR_CONFIG.MAX_AMOUNT);
         setAmount(clamped);
     }, []);
 
@@ -81,11 +72,6 @@ export const LoanCalculator = () => {
         }
         setScreen('confirm');
     }, [loanDetails.isValid]);
-
-    // ConfirmScreen → TerminosScreen
-    const handleConfirmContinue = useCallback(() => {
-        setScreen('terminos');
-    }, []);
 
     const handleConfirm = useCallback(async () => {
         // 1. Capturar info del dispositivo
@@ -121,12 +107,12 @@ export const LoanCalculator = () => {
                             title="¿Cuánto necesitás?"
                             amount={formatCurrency(amount)}
                             currencyOrUnit="Gs"
-                            minLabel={`${formatCurrency(CALCULATOR_CONFIG_V2.MIN_AMOUNT)} Gs`}
-                            maxLabel={`${formatCurrency(CALCULATOR_CONFIG_V2.MAX_AMOUNT)} Gs`}
+                            minLabel={`${formatCurrency(CALCULATOR_CONFIG.MIN_AMOUNT)} Gs`}
+                            maxLabel={`${formatCurrency(CALCULATOR_CONFIG.MAX_AMOUNT)} Gs`}
                             value={amount}
-                            minimumValue={CALCULATOR_CONFIG_V2.MIN_AMOUNT}
-                            maximumValue={CALCULATOR_CONFIG_V2.MAX_AMOUNT}
-                            step={CALCULATOR_CONFIG_V2.AMOUNT_STEP}
+                            minimumValue={CALCULATOR_CONFIG.MIN_AMOUNT}
+                            maximumValue={CALCULATOR_CONFIG.MAX_AMOUNT}
+                            step={CALCULATOR_CONFIG.AMOUNT_STEP}
                             onValueChange={handleAmountChange}
                             onAmountPress={() => {
                                 setRawInput(amount.toString());
@@ -142,12 +128,12 @@ export const LoanCalculator = () => {
                             title="¿En cuántas cuotas?"
                             amount={effectiveMonths.toString()}
                             currencyOrUnit={monthsLabel}
-                            minLabel={`${tranche.allowedMonths[0]} cuotas`}
+                            minLabel={tranche.allowedMonths[0] === 1 ? 'Pago único' : `${tranche.allowedMonths[0]} cuotas`}
                             maxLabel={`${tranche.allowedMonths[tranche.allowedMonths.length - 1]} cuotas`}
                             value={visualMonthsIdx}
                             minimumValue={0}
                             maximumValue={tranche.allowedMonths.length - 1}
-                            step={1}
+                            step={amount === 500_000 ? 0 : 1}
                             onValueChange={(val) => {
                                 setVisualMonthsIdx(val);
                                 const snapper = Math.round(val);
@@ -214,15 +200,8 @@ export const LoanCalculator = () => {
             months={effectiveMonths}
             monthlyQuota={loanDetails.monthlyQuota}
             onBack={() => setScreen('calculator')}
-            onConfirm={handleConfirmContinue}
+            onConfirm={handleConfirm}
             loading={loading}
-        />
-    );
-
-    const renderTerminosScreen = (
-        <TerminosScreen
-            onBack={() => setScreen('confirm')}
-            onAccept={handleConfirm}
         />
     );
 
@@ -233,23 +212,18 @@ export const LoanCalculator = () => {
         />
     );
 
-    // Encadenamos tres CrossFadeSlideTransition:
-    // calculator → confirm → terminos → youform
+    // Encadenamos dos CrossFadeSlideTransition:
+    // calculator → confirm (showSecond = screen !== 'calculator')
+    // confirm → youform   (showSecond = screen === 'youform', dentro del secondaryScreen)
     return (
         <CrossFadeSlideTransition
             showSecond={screen !== 'calculator'}
             primaryScreen={renderCalculatorContent}
             secondaryScreen={
                 <CrossFadeSlideTransition
-                    showSecond={screen !== 'calculator' && screen !== 'confirm'}
+                    showSecond={screen === 'youform'}
                     primaryScreen={renderConfirmScreen}
-                    secondaryScreen={
-                        <CrossFadeSlideTransition
-                            showSecond={screen === 'youform'}
-                            primaryScreen={renderTerminosScreen}
-                            secondaryScreen={renderYouForm}
-                        />
-                    }
+                    secondaryScreen={renderYouForm}
                 />
             }
         />
@@ -298,7 +272,7 @@ const styles = StyleSheet.create({
     },
     secondaryRow: {
         height: Metrics.height32,
-        paddingLeft: Metrics.padding16,
+        paddingLeft: Metrics.padding16,  
         paddingRight: Metrics.padding16,
     },
 });
