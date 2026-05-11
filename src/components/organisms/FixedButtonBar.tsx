@@ -19,6 +19,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Button } from '../atoms/Button';
+import { Metrics } from '../../theme/Metrics';
 
 interface FixedButtonBarProps {
     primaryLabel: string;
@@ -61,7 +62,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 16,
         paddingBottom: 16,
-        gap: 24,
+        gap: Metrics.gap12,
         width: '100%',
         backgroundColor: 'rgba(0, 21, 17, 0.75)',
     },

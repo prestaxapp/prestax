@@ -16,12 +16,12 @@
  *     - Texto legal completo
  *  4. FixedButtonBar fijo al pie ("Acepto" + "No acepto")
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import {
     View,
-    ScrollView,
     StyleSheet,
     Image,
+    Animated,
 } from 'react-native';
 import { Text } from '../components/atoms/Text';
 import { HeadingTitle } from '../components/organisms/HeadingTitle';
@@ -52,6 +52,8 @@ Adicionalmente, los datos sobre los ingresos y situación patrimonial informados
 3.2. No obstante lo anterior, el CLIENTE presta su consentimiento para que VIVA REPRESENTACIONES S.A. pueda compartir su información con terceros en los casos previstos por la ley o cuando sea necesario para la ejecución del contrato.`;
 
 export const TerminosScreen: React.FC<TerminosScreenProps> = ({ onBack, onAccept }) => {
+    const scrollY = useRef(new Animated.Value(0)).current;
+
     return (
         <View style={styles.screen}>
             {/* ── GradientVector decorativo de fondo ── */}
@@ -60,26 +62,34 @@ export const TerminosScreen: React.FC<TerminosScreenProps> = ({ onBack, onAccept
             </View>
 
             <View style={styles.contentWrapper}>
+                {/* ── 1. Header con HeadingTitle (Sticky) ── */}
+                <HeadingTitle
+                    ubicacion="izq"
+                    tamano="max"
+                    actionType="setting"
+                    showChevron={true}
+                    showClose={false}
+                    showMultiStepProgressBar={false}
+                    showTitleContainer={true}
+                    showDescription={false}
+                    onPressBack={onBack}
+                    label="Términos y condiciones"
+                    isSticky={true}
+                    scrollY={scrollY}
+                    smallTitle="Términos y condiciones"
+                />
+
                 {/* ── Scrollable content ── */}
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
+                <Animated.ScrollView
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: 144 }]}
                     showsVerticalScrollIndicator={false}
                     bounces={false}
+                    scrollEventThrottle={16}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                        { useNativeDriver: true }
+                    )}
                 >
-                    {/* ── 1. Header con HeadingTitle ── */}
-                    <HeadingTitle
-                        ubicacion="izq"
-                        tamano="max"
-                        actionType="setting"
-                        showChevron={true}
-                        showClose={false}
-                        showMultiStepProgressBar={false}
-                        showTitleContainer={true}
-                        showDescription={false}
-                        onPressBack={onBack}
-                        label="Términos y condiciones"
-                    />
-
                     {/* ── 2. Subtítulo: "Crédito otorgado por VIVA" ── */}
                     <View style={styles.subtitleRow}>
                         <Text style={styles.subtitleText}>Crédito otorgado por </Text>
@@ -90,7 +100,7 @@ export const TerminosScreen: React.FC<TerminosScreenProps> = ({ onBack, onAccept
                     <Text style={styles.bodyText}>
                         {TERMINOS_TEXT}
                     </Text>
-                </ScrollView>
+                </Animated.ScrollView>
 
                 {/* ── 4. FixedButtonBar — fuera del scroll, fijo al pie ── */}
                 <FixedButtonBar

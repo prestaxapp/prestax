@@ -1,5 +1,8 @@
 export const Metrics = {
     maxWidth450: 450,
+    maxWidth500: 500,
+
+    sideSpacing: 16,
 
     padding0: 0,
     padding8: 8,

@@ -13,6 +13,23 @@ interface ButtonProps {
     variant?: 'primary' | 'text';
 }
 
+/**
+ * Botón Universal Prestax — Átomo
+ * 
+ * Componente base de interacción del sistema. Implementa feedback visual (escala)
+ * y soporta las dos variantes principales del diseño.
+ * 
+ * @param title - Texto a mostrar dentro del botón.
+ * @param onPress - Función que se ejecuta al presionar.
+ * @param variant 
+ *  - 'primary': Botón con gradiente, bordes redondeados (pill) y sombra.
+ *  - 'text': Botón sin fondo (tipo link), ideal para acciones secundarias como "Atrás".
+ * @param loading - Estado de carga que muestra un ActivityIndicator.
+ * @param disabled - Desactiva la interacción y aplica opacidad.
+ * 
+ * @example
+ * <Button title="Confirmar" variant="primary" onPress={handleConfirm} />
+ */
 export const Button = ({ title, onPress, disabled, loading, style, variant = 'primary' }: ButtonProps) => {
     const [isHovered, setIsHovered] = useState(false);
     const [isPressed, setIsPressed] = useState(false);
@@ -158,8 +175,7 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         justifyContent: 'center',
         alignItems: 'center',
-        width: '100%',
-        minHeight: 56,
+        alignSelf: 'center',
     },
     textButtonText: {
         color: Colors.primaryMain,

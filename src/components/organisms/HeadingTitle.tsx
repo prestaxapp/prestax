@@ -1,222 +1,382 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, TextInput, Animated, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Text } from '../atoms/Text';
 import { Icon } from '../atoms/Icon';
 import { Colors } from '../../theme/Colors';
+import { Metrics } from '../../theme/Metrics';
+import { useStickyHeaderAnimation } from '../../animations/useStickyHeaderAnimation';
 
-export interface HeadingTitleProps {
-    ubicacion?: 'izq' | 'minimizado' | 'chat' | 'minim. search' | 'Seleccionar';
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Base properties shared across all Heading variants.
+ */
+export interface HeadingBaseProps {
+    /** Primary text or custom React element for the title */
+    label?: string | React.ReactNode;
+    /** Secondary description text shown below the title */
+    text?: string;
+    /** Toggle the back chevron button visibility */
+    showChevron?: boolean;
+    /** Toggle the close button visibility */
+    showClose?: boolean;
+    /** Toggle the main title container visibility */
+    showTitleContainer?: boolean;
+    /** Toggle the description text visibility */
+    showDescription?: boolean;
+    
+    /** Callback triggered when back button is pressed */
+    onPressBack?: () => void;
+    /** Callback triggered when close button is pressed */
+    onPressClose?: () => void;
+    /** Callback triggered for specific actions (e.g., in chat or selection mode) */
+    onPressAction?: () => void;
+}
+
+/**
+ * Properties specific to the left-aligned ("izq") variant, which includes multi-step and sticky features.
+ */
+export interface HeadingIzqProps extends HeadingBaseProps {
+    ubicacion: 'izq';
+    /** Sizing variant for the left-aligned header */
+    tamano?: 'max' | 'min';
+    /** Toggle the multi-step progress bar */
+    showMultiStepProgressBar?: boolean;
+    /** Current step for the progress bar (1-indexed) */
+    currentStep?: number;
+    /** Total number of steps for the progress bar */
+    totalSteps?: number;
+    
+    /** Enable scroll-driven sticky behavior */
+    isSticky?: boolean;
+    /** Animated value tracking ScrollView's Y offset */
+    scrollY?: Animated.Value;
+    /** The title text used when collapsed into sticky mode */
+    smallTitle?: string;
+    
+    // Kept for backward compatibility if passed unnecessarily by legacy screens
+    actionType?: 'setting' | 'actions';
+}
+
+export interface HeadingMinimizadoProps extends HeadingBaseProps {
+    ubicacion: 'minimizado';
     tamano?: 'max' | 'min';
     actionType?: 'setting' | 'actions';
-    label?: string | React.ReactNode;
-    text?: string;
-    showBreadcrumbs?: boolean;
-    showChevron?: boolean;
-    showClose?: boolean;
-    showDescription?: boolean;
-    showMultiStepProgressBar?: boolean;
-    showTitleContainer?: boolean;
-    
-    // Callbacks
-    onPressBack?: () => void;
-    onPressClose?: () => void;
-    onPressAction?: () => void;
-    
-    // Multi-step
-    currentStep?: number;
-    totalSteps?: number;
 }
+
+export interface HeadingChatProps extends HeadingBaseProps {
+    ubicacion: 'chat';
+    actionType?: 'setting' | 'actions';
+}
+
+export interface HeadingSearchProps extends HeadingBaseProps {
+    ubicacion: 'minim. search';
+    actionType?: 'setting' | 'actions';
+}
+
+export interface HeadingSeleccionarProps extends HeadingBaseProps {
+    ubicacion: 'Seleccionar';
+    actionType?: 'setting' | 'actions';
+}
+
+/**
+ * Discriminated union of all possible heading properties based on the `ubicacion` discriminant.
+ */
+export type HeadingTitleProps = 
+    | HeadingIzqProps 
+    | HeadingMinimizadoProps 
+    | HeadingChatProps 
+    | HeadingSearchProps 
+    | HeadingSeleccionarProps;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── INTERNAL ATOMS (Reusable within Heading)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BackButton: React.FC<{ show?: boolean; onPress?: () => void }> = ({ show, onPress }) => {
+    if (!show) return null;
+    return (
+        <TouchableOpacity style={styles.iconButton} onPress={onPress} activeOpacity={0.7}>
+            <Icon name="chevron-back" size={36} color="white" />
+        </TouchableOpacity>
+    );
+};
+
+const CloseButton: React.FC<{ show?: boolean; onPress?: () => void }> = ({ show, onPress }) => {
+    if (!show) return null;
+    return (
+        <TouchableOpacity style={styles.iconButton} onPress={onPress} activeOpacity={0.7}>
+            {/* @ts-ignore - 'close' not yet in ICON_REGISTRY */}
+            <Icon name="close" size={20} color="white" />
+        </TouchableOpacity>
+    );
+};
+
+const MultiStepProgress: React.FC<{ show?: boolean; currentStep?: number }> = ({ show, currentStep = 1 }) => {
+    if (!show) return null;
+    return (
+        <View style={styles.stepperContainer}>
+            <View style={[styles.stepCircle, currentStep >= 1 ? styles.stepActive : styles.stepInactive]}>
+                <Text variant="footnote" color={currentStep >= 1 ? 'white' : 'white50'}>1</Text>
+            </View>
+            <View style={styles.stepLineContainer}>
+                <View style={[styles.stepLine, currentStep >= 2 ? styles.stepLineActive : {}]} />
+            </View>
+            <View style={[styles.stepCircle, currentStep >= 2 ? styles.stepActive : styles.stepInactive]}>
+                <Text variant="footnote" color={currentStep >= 2 ? 'white' : 'white50'}>2</Text>
+            </View>
+        </View>
+    );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── SUB-COMPONENTS (Variants)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HeadingIzq: React.FC<HeadingIzqProps> = (props) => {
+    const isMin = props.tamano === 'min';
+    const anims = useStickyHeaderAnimation(props.scrollY);
+
+    if (props.scrollY && props.isSticky && anims) {
+        return (
+            <View style={[styles.container, styles.containerMax, styles.stickyWrapper]} pointerEvents="box-none">
+                {/* Sticky Gradient Background with subtle Blur for slow devices */}
+                <AnimatedBlurView
+                    tint="dark"
+                    intensity={40} // Increased intensity so it's noticeable
+                    experimentalBlurMethod="dimezisBlurView" // Fix for Android performance and visibility
+                    style={[
+                        StyleSheet.absoluteFill, 
+                        { 
+                            opacity: anims.stickyBgOpacity, 
+                            zIndex: 0,
+                            bottom: undefined, // Don't cover the whole container, just the header
+                            height: Platform.OS === 'ios' ? 100 : 88
+                        }
+                    ]}
+                >
+                    <LinearGradient
+                        // Using backgroundDefault to backgroundDefault+00 (transparent) avoids gray banding
+                        colors={[Colors.backgroundDefault, Colors.backgroundDefault + '00']}
+                        locations={[0, 1]}
+                        style={StyleSheet.absoluteFill}
+                    />
+                </AnimatedBlurView>
+
+                {/* Top Row: Chevron + Small Title + Close */}
+                <View style={[styles.topRowSpaceBetween, { zIndex: 10 }]}>
+                    <View style={styles.iconBoxLeft}>
+                        <BackButton show={props.showChevron} onPress={props.onPressBack} />
+                    </View>
+                    
+                    <Animated.View style={[styles.titleCenterBox, { opacity: anims.smallTitleOpacity, transform: [{ translateY: anims.smallTitleTranslateY }] }]}>
+                        {props.smallTitle && (
+                            <Text variant="title3Regular" numberOfLines={1} ellipsizeMode="tail">
+                                {props.smallTitle}
+                            </Text>
+                        )}
+                    </Animated.View>
+
+                    <View style={styles.iconBoxRight}>
+                        <CloseButton show={props.showClose} onPress={props.onPressClose} />
+                    </View>
+                </View>
+
+                {/* Big Title (Instancia 1) */}
+                {props.showTitleContainer && (
+                    <Animated.View style={[isMin ? styles.titleBoxMin : styles.titleBoxMax, { opacity: anims.bigTitleOpacity, transform: [{ translateY: anims.bigTitleTranslateY }], zIndex: 5 }]}>
+                        {typeof props.label === 'string' ? (
+                            <Text style={isMin ? styles.titleMin : styles.titleMax}>{props.label}</Text>
+                        ) : (
+                            props.label
+                        )}
+                        {!isMin && props.showDescription && (
+                            <Text style={styles.descriptionText}>{props.text}</Text>
+                        )}
+                    </Animated.View>
+                )}
+            </View>
+        );
+    }
+
+    // Default non-sticky behavior
+    return (
+        <View style={[styles.container, isMin ? styles.containerMin : styles.containerMax]}>
+            <View style={styles.topRowSpaceBetween}>
+                <BackButton show={props.showChevron} onPress={props.onPressBack} />
+                <MultiStepProgress show={props.showMultiStepProgressBar} currentStep={props.currentStep} />
+                <CloseButton show={props.showClose} onPress={props.onPressClose} />
+            </View>
+            {props.showTitleContainer && (
+                <View style={isMin ? styles.titleBoxMin : styles.titleBoxMax}>
+                    {typeof props.label === 'string' ? (
+                        <Text style={isMin ? styles.titleMin : styles.titleMax}>{props.label}</Text>
+                    ) : (
+                        props.label
+                    )}
+                    {!isMin && props.showDescription && (
+                        <Text style={styles.descriptionText}>{props.text}</Text>
+                    )}
+                </View>
+            )}
+        </View>
+    );
+};
+
+const HeadingMinimizado: React.FC<HeadingMinimizadoProps> = (props) => (
+    <View style={styles.containerMin}>
+        <View style={styles.topRowCenterTitle}>
+            <View style={styles.iconBoxLeft}>
+                <BackButton show={props.showChevron} onPress={props.onPressBack} />
+            </View>
+            {props.showTitleContainer && (
+                <View style={styles.titleCenterBox}>
+                    <Text style={styles.titleMin}>{props.label as string}</Text>
+                </View>
+            )}
+            <View style={styles.iconBoxRight}>
+                <CloseButton show={props.showClose} onPress={props.onPressClose} />
+            </View>
+        </View>
+        {props.tamano === 'max' && props.showDescription && (
+            <View style={styles.descriptionBox}>
+                <Text style={styles.descriptionText}>{props.text}</Text>
+            </View>
+        )}
+    </View>
+);
+
+const HeadingChat: React.FC<HeadingChatProps> = (props) => (
+    <View style={styles.containerChat}>
+        <View style={styles.chatProfileRow}>
+            <View style={styles.chatProfilePicture}>
+                {/* @ts-ignore - 'person' not yet in ICON_REGISTRY */}
+                <Icon name="person" size={24} color="white50" />
+            </View>
+            <Text style={styles.titleMin}>Mónica Armoa</Text>
+        </View>
+        {props.actionType === 'actions' && (
+            <TouchableOpacity onPress={props.onPressAction} style={styles.chatActionBtn}>
+                <Text style={styles.chatActionText}>Cancelar</Text>
+            </TouchableOpacity>
+        )}
+    </View>
+);
+
+const HeadingSearch: React.FC<HeadingSearchProps> = (props) => (
+    <View style={styles.containerSearch}>
+        <View style={styles.topRowCenterTitle}>
+            <View style={styles.iconBoxLeft}>
+                <BackButton show={props.showChevron} onPress={props.onPressBack} />
+            </View>
+            <View style={styles.titleCenterBox}>
+                <Text style={styles.titleMin}>{props.label as string}</Text>
+            </View>
+            <View style={styles.iconBoxRight}>
+                <CloseButton show={props.showClose} onPress={props.onPressClose} />
+            </View>
+        </View>
+        <View style={styles.searchBarContainer}>
+            <View style={styles.searchBar}>
+                {/* @ts-ignore - 'search' not yet in ICON_REGISTRY */}
+                <Icon name="search" size={20} color="white50" />
+                <TextInput 
+                    style={styles.searchInput}
+                    placeholder="Buscar"
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                />
+            </View>
+        </View>
+    </View>
+);
+
+const HeadingSeleccionar: React.FC<HeadingSeleccionarProps> = (props) => (
+    <View style={styles.containerMax}>
+        <View style={styles.topRowSpaceBetween}>
+            <View style={styles.topRowSelectLeft}>
+                <BackButton show={props.showChevron} onPress={props.onPressBack} />
+                <Text style={styles.selectionCount}>0</Text>
+            </View>
+            <View style={styles.iconActionGroup}>
+                <TouchableOpacity onPress={props.onPressAction} style={styles.actionIconPad}>
+                    {/* @ts-ignore - 'pencil' not yet in ICON_REGISTRY */}
+                    <Icon name="pencil" size={24} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={props.onPressAction} style={styles.actionIconPad}>
+                    {/* @ts-ignore - 'trash' not yet in ICON_REGISTRY */}
+                    <Icon name="trash" size={24} color="white" />
+                </TouchableOpacity>
+            </View>
+        </View>
+        {props.showTitleContainer && (
+            <View style={styles.titleBoxMax}>
+                <TouchableOpacity style={styles.selectAllRow}>
+                    {/* @ts-ignore - 'square-outline' not yet in ICON_REGISTRY */}
+                    <Icon name="square-outline" size={24} color="white50" />
+                    <Text style={styles.selectAllText}>Seleccionar todo</Text>
+                </TouchableOpacity>
+                {props.showDescription && (
+                    <Text style={styles.descriptionText}>{props.text}</Text>
+                )}
+            </View>
+        )}
+    </View>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── MAIN EXPORT
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Organism/HeadingTitle
  *
- * Un Super-Componente que renderiza diferentes cabeceras basado en `ubicacion`.
+ * A scalable super-component that routes to the correct Heading variant.
+ * Refactored using Clean Architecture and SOLID principles.
  */
-export const HeadingTitle: React.FC<HeadingTitleProps> = ({
-    ubicacion = 'izq',
-    tamano = 'max',
-    actionType = 'setting',
-    label = 'Title',
-    text = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-    showBreadcrumbs = false,
-    showChevron = true,
-    showClose = true,
-    showDescription = true,
-    showMultiStepProgressBar = false,
-    showTitleContainer = true,
-    currentStep = 1,
-    totalSteps = 2,
-    onPressBack,
-    onPressClose,
-    onPressAction,
-}) => {
-
-    const renderBackButton = () => {
-        if (!showChevron) return null;
-        return (
-            <TouchableOpacity style={styles.iconButton} onPress={onPressBack} activeOpacity={0.7}>
-                <Icon name="chevron-back" size={36} color="white" />
-            </TouchableOpacity>
-        );
+export const HeadingTitle: React.FC<HeadingTitleProps> = (props) => {
+    // Default values mapping to maintain backward compatibility
+    const hydratedProps = {
+        tamano: 'max' as const,
+        actionType: 'setting' as const,
+        label: 'Title',
+        text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+        showBreadcrumbs: false,
+        showChevron: true,
+        showClose: true,
+        showDescription: true,
+        showMultiStepProgressBar: false,
+        showTitleContainer: true,
+        currentStep: 1,
+        totalSteps: 2,
+        ...props,
     };
 
-    const renderCloseButton = () => {
-        if (!showClose) return null;
-        return (
-            <TouchableOpacity style={styles.iconButton} onPress={onPressClose} activeOpacity={0.7}>
-                {/* Fallback to close-outline if small close doesn't exist */}
-                {/* @ts-ignore - 'close' not yet in ICON_REGISTRY */}
-                <Icon name="close" size={20} color="white" />
-            </TouchableOpacity>
-        );
-    };
-
-    const renderMultiStepProgress = () => {
-        if (!showMultiStepProgressBar) return null;
-        return (
-            <View style={styles.stepperContainer}>
-                <View style={[styles.stepCircle, currentStep >= 1 ? styles.stepActive : styles.stepInactive]}>
-                    <Text variant="footnote" color={currentStep >= 1 ? 'white' : 'white50'}>1</Text>
-                </View>
-                <View style={styles.stepLineContainer}>
-                    <View style={[styles.stepLine, currentStep >= 2 ? styles.stepLineActive : {}]} />
-                </View>
-                <View style={[styles.stepCircle, currentStep >= 2 ? styles.stepActive : styles.stepInactive]}>
-                    <Text variant="footnote" color={currentStep >= 2 ? 'white' : 'white50'}>2</Text>
-                </View>
-            </View>
-        );
-    };
-
-    // ── 1. Variante: "izq" (Expandido por defecto con alineación izquierda) ──
-    if (ubicacion === 'izq') {
-        const isMin = tamano === 'min';
-        return (
-            <View style={[styles.container, isMin ? styles.containerMin : styles.containerMax]}>
-                <View style={styles.topRowSpaceBetween}>
-                    {renderBackButton()}
-                    {renderMultiStepProgress()}
-                    {renderCloseButton()}
-                </View>
-                {showTitleContainer && (
-                    <View style={isMin ? styles.titleBoxMin : styles.titleBoxMax}>
-                        <Text style={isMin ? styles.titleMin : styles.titleMax}>{label}</Text>
-                        {!isMin && showDescription && (
-                            <Text style={styles.descriptionText}>{text}</Text>
-                        )}
-                    </View>
-                )}
-            </View>
-        );
+    switch (props.ubicacion) {
+        case 'izq':
+            return <HeadingIzq {...(hydratedProps as HeadingIzqProps)} />;
+        case 'minimizado':
+            return <HeadingMinimizado {...(hydratedProps as HeadingMinimizadoProps)} />;
+        case 'chat':
+            return <HeadingChat {...(hydratedProps as HeadingChatProps)} />;
+        case 'minim. search':
+            return <HeadingSearch {...(hydratedProps as HeadingSearchProps)} />;
+        case 'Seleccionar':
+            return <HeadingSeleccionar {...(hydratedProps as HeadingSeleccionarProps)} />;
+        default:
+            // Fallback default routing (equivalent to izq)
+            return <HeadingIzq {...(hydratedProps as HeadingIzqProps)} ubicacion="izq" />;
     }
-
-    // ── 2. Variante: "minimizado" (Título centrado, nav a los lados) ──
-    if (ubicacion === 'minimizado') {
-        return (
-            <View style={styles.containerMin}>
-                <View style={styles.topRowCenterTitle}>
-                    <View style={styles.iconBoxLeft}>{renderBackButton()}</View>
-                    {showTitleContainer && (
-                        <View style={styles.titleCenterBox}>
-                            <Text style={styles.titleMin}>{label}</Text>
-                        </View>
-                    )}
-                    <View style={styles.iconBoxRight}>{renderCloseButton()}</View>
-                </View>
-                {tamano === 'max' && showDescription && (
-                    <View style={styles.descriptionBox}>
-                        <Text style={styles.descriptionText}>{text}</Text>
-                    </View>
-                )}
-            </View>
-        );
-    }
-
-    // ── 3. Variante: "chat" (Mónica Armoa, o foto) ──
-    if (ubicacion === 'chat') {
-        return (
-            <View style={styles.containerChat}>
-                <View style={styles.chatProfileRow}>
-                    <View style={styles.chatProfilePicture}>
-                        {/* @ts-ignore - 'person' not yet in ICON_REGISTRY */}
-                        <Icon name="person" size={24} color="white50" />
-                    </View>
-                    <Text style={styles.titleMin}>Mónica Armoa</Text>
-                </View>
-                {actionType === 'actions' && (
-                    <TouchableOpacity onPress={onPressAction} style={styles.chatActionBtn}>
-                        <Text style={styles.chatActionText}>Cancelar</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-        );
-    }
-
-    // ── 4. Variante: "minim. search" (Barra de búsqueda) ──
-    if (ubicacion === 'minim. search') {
-        return (
-            <View style={styles.containerSearch}>
-                <View style={styles.topRowCenterTitle}>
-                    <View style={styles.iconBoxLeft}>{renderBackButton()}</View>
-                    <View style={styles.titleCenterBox}>
-                        <Text style={styles.titleMin}>{label}</Text>
-                    </View>
-                    <View style={styles.iconBoxRight}>{renderCloseButton()}</View>
-                </View>
-                <View style={styles.searchBarContainer}>
-                    <View style={styles.searchBar}>
-                        {/* @ts-ignore - 'search' not yet in ICON_REGISTRY */}
-                        <Icon name="search" size={20} color="white50" />
-                        <TextInput 
-                            style={styles.searchInput}
-                            placeholder="Buscar"
-                            placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                        />
-                    </View>
-                </View>
-            </View>
-        );
-    }
-
-    // ── 5. Variante: "Seleccionar" (Seleccionar todo) ──
-    if (ubicacion === 'Seleccionar') {
-        return (
-            <View style={styles.containerMax}>
-                <View style={styles.topRowSpaceBetween}>
-                    <View style={styles.topRowSelectLeft}>
-                        {renderBackButton()}
-                        <Text style={styles.selectionCount}>0</Text>
-                    </View>
-                    <View style={styles.iconActionGroup}>
-                        <TouchableOpacity onPress={onPressAction} style={styles.actionIconPad}>
-                            {/* @ts-ignore - 'pencil' not yet in ICON_REGISTRY */}
-                            <Icon name="pencil" size={24} color="white" />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={onPressAction} style={styles.actionIconPad}>
-                            {/* @ts-ignore - 'trash' not yet in ICON_REGISTRY */}
-                            <Icon name="trash" size={24} color="white" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-                {showTitleContainer && (
-                    <View style={styles.titleBoxMax}>
-                        <TouchableOpacity style={styles.selectAllRow}>
-                            {/* @ts-ignore - 'square-outline' not yet in ICON_REGISTRY */}
-                            <Icon name="square-outline" size={24} color="white50" />
-                            <Text style={styles.selectAllText}>Seleccionar todo</Text>
-                        </TouchableOpacity>
-                        {showDescription && (
-                            <Text style={styles.descriptionText}>{text}</Text>
-                        )}
-                    </View>
-                )}
-            </View>
-        );
-    }
-
-    // Fallback
-    return null;
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
     container: {
@@ -226,11 +386,13 @@ const styles = StyleSheet.create({
     containerMin: {
         width: '100%',
         paddingVertical: 16,
+        paddingHorizontal: Metrics.sideSpacing,
     },
     containerMax: {
         width: '100%',
-        paddingTop: 40,
+        paddingTop: Platform.OS === 'ios' ? 52 : 40,
         paddingBottom: 20,
+        paddingHorizontal: Metrics.sideSpacing,
     },
     topRowSpaceBetween: {
         flexDirection: 'row',
@@ -262,7 +424,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     stepActive: {
-        backgroundColor: '#0B6FC7', // Figma brand/primary for stepper
+        backgroundColor: '#0B6FC7',
     },
     stepInactive: {
         borderWidth: 1,
@@ -344,6 +506,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingTop: 40,
         paddingBottom: 20,
+        paddingHorizontal: Metrics.sideSpacing,
     },
     chatProfileRow: {
         flexDirection: 'row',
@@ -375,6 +538,7 @@ const styles = StyleSheet.create({
         gap: 16,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255,255,255,0.1)',
+        paddingHorizontal: Metrics.sideSpacing,
     },
     searchBarContainer: {
         width: '100%',
@@ -404,7 +568,7 @@ const styles = StyleSheet.create({
     },
     selectionCount: {
         color: Colors.primaryMain,
-        fontFamily: 'Lufga-Medium', // Fallback from Montserrat SemiBold
+        fontFamily: 'Lufga-Medium',
         fontSize: 16,
     },
     iconActionGroup: {
@@ -423,7 +587,22 @@ const styles = StyleSheet.create({
     },
     selectAllText: {
         color: Colors.white,
-        fontFamily: 'Lufga-Medium', // Fallback from Gilroy Semibold
+        fontFamily: 'Lufga-Medium',
         fontSize: 16,
+    },
+    
+    // Sticky Header additional styles
+    stickyWrapper: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+    },
+    title3Regular: {
+        color: Colors.white,
+        fontFamily: 'Lufga-Regular',
+        fontSize: 18,
+        lineHeight: 22,
     },
 });

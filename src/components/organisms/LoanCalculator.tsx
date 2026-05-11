@@ -12,6 +12,7 @@ import { YouFormScreen } from '../../screens/YouFormScreen';
 import { TerminosScreen } from '../../screens/TerminosScreen';
 import { CrossFadeSlideTransition } from '../animations/CrossFadeSlideTransition';
 import { sendLeadMetadata } from '../../services/GoogleSheetsService';
+import { generateSessionId, createPreSolicitud, logConsent } from '../../services/SupabaseService';
 import { getDeviceInfo } from '../../utils/deviceInfo';
 import {
     calculateLoanV2, CALCULATOR_CONFIG_V2, formatCurrency,
@@ -35,6 +36,7 @@ export const LoanCalculator = () => {
     const [loading, setLoading] = useState(false);
     // 4 states: 'calculator' | 'confirm' | 'terminos' | 'youform'
     const [screen, setScreen] = useState<'calculator' | 'confirm' | 'terminos' | 'youform'>('calculator');
+    const [sessionId, setSessionId] = useState('');
 
     // Tap-to-edit amount
     const [editingAmount, setEditingAmount] = useState(false);
@@ -79,8 +81,24 @@ export const LoanCalculator = () => {
             Alert.alert('Monto no permitido', 'Por favor selecciona un monto válido según los plazos disponibles.');
             return;
         }
+
+        // Generar session_id único para correlacionar todo el flujo
+        const newSessionId = generateSessionId();
+        setSessionId(newSessionId);
+
+        // Crear pre_solicitud en Supabase (non-blocking — no detiene la UI)
+        const { deviceModel, deviceOS } = getDeviceInfo();
+        createPreSolicitud({
+            session_id: newSessionId,
+            monto: amount,
+            cuotas: effectiveMonths,
+            cuota_mensual: loanDetails.monthlyQuota,
+            device_model: deviceModel,
+            device_os: deviceOS,
+        }).catch(err => console.warn('Pre-solicitud send failed silently:', err));
+
         setScreen('confirm');
-    }, [loanDetails.isValid]);
+    }, [loanDetails.isValid, amount, effectiveMonths, loanDetails.monthlyQuota]);
 
     // ConfirmScreen → TerminosScreen
     const handleConfirmContinue = useCallback(() => {
@@ -88,11 +106,18 @@ export const LoanCalculator = () => {
     }, []);
 
     const handleConfirm = useCallback(async () => {
-        // 1. Capturar info del dispositivo
+        // 1. Registrar consentimiento legal en Supabase (non-blocking)
+        logConsent({
+            session_id: sessionId,
+            consent_type: 'terminos_y_condiciones',
+            consent_version: 'v1.0',
+        }).catch(err => console.warn('Consent log failed silently:', err));
+
+        // 2. Capturar info del dispositivo para Google Sheet
         const { deviceModel, deviceOS } = getDeviceInfo();
         const timestamp = new Date().toISOString();
 
-        // 2. Enviar metadata al Google Sheet (non-blocking — no detiene la UI)
+        // 3. Enviar metadata al Google Sheet (mantener Excel existente)
         sendLeadMetadata({
             monto: amount,
             cuotas: effectiveMonths,
@@ -101,9 +126,9 @@ export const LoanCalculator = () => {
             timestamp,
         }).catch(err => console.warn('Lead metadata send failed silently:', err));
 
-        // 3. Transicionar a YouForm inmediatamente, sin esperar la respuesta del server
+        // 4. Transicionar a YouForm inmediatamente, sin esperar respuestas
         setScreen('youform');
-    }, [amount, effectiveMonths]);
+    }, [amount, effectiveMonths, sessionId]);
 
     const monthsLabel = effectiveMonths === 1 ? 'cuota' : 'cuotas';
 
@@ -230,6 +255,7 @@ export const LoanCalculator = () => {
         <YouFormScreen
             amount={amount}
             months={effectiveMonths}
+            sessionId={sessionId}
         />
     );
 

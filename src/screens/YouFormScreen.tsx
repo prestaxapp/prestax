@@ -35,15 +35,17 @@ interface YouFormScreenProps {
     amount?: number;
     /** Cuotas pre-seleccionadas para pre-fill */
     months?: number;
+    /** Session ID para correlacionar con pre_solicitudes y consent_log en Supabase */
+    sessionId?: string;
 }
 
-export const YouFormScreen: React.FC<YouFormScreenProps> = ({ amount, months }) => {
+export const YouFormScreen: React.FC<YouFormScreenProps> = ({ amount, months, sessionId }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     // Construir URL con query params para pre-fill si el form lo soporta
     const isPending = (YOUFORM_URL as string) === PLACEHOLDER_URL;
     const formUrl = !isPending
-        ? `${YOUFORM_URL}?amount=${amount ?? ''}&months=${months ?? ''}`
+        ? `${YOUFORM_URL}?amount=${amount ?? ''}&months=${months ?? ''}&session_id=${sessionId ?? ''}`
         : YOUFORM_URL;
 
     if (isPending) {

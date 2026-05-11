@@ -34,13 +34,14 @@
  *  y registrar 'chevron.left' en Icon.tsx (ICON_REGISTRY).
  *  Luego reemplazar el <Text>‹</Text> por <Icon name="chevron.left" size={16} />.
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import {
     View,
-    ScrollView,
     StyleSheet,
     TouchableOpacity,
     Image,
+    Animated,
+    Platform,
 } from 'react-native';
 import { Text } from '../components/atoms/Text';
 import { GradientSeparator } from '../components/atoms/GradientSeparator';
@@ -76,6 +77,8 @@ export const ConfirmScreen = ({
     const plazLabel = `${months} ${months === 1 ? 'mes' : 'meses'}`;
     const primaryLabel = `Prestar ${formattedAmount} Gs`;
 
+    const scrollY = useRef(new Animated.Value(0)).current;
+
     return (
         // Fondo sólido: backgroundDefault (#001511)
         <View style={styles.screen}>
@@ -84,41 +87,47 @@ export const ConfirmScreen = ({
                 <GradientVector width="100%" height={393.909} />
             </View>
             <View style={styles.contentWrapper}>
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
+                {/* ── Sticky Header (Absolute) ───────────────────── */}
+                <HeadingTitle
+                    ubicacion="izq"
+                    actionType="setting"
+                    tamano="max"
+                    showChevron={true}
+                    showMultiStepProgressBar={false}
+                    showClose={false}
+                    showTitleContainer={true}
+                    showDescription={false}
+                    onPressBack={onBack}
+                    isSticky={true}
+                    scrollY={scrollY}
+                    smallTitle={`¿Prestar ${formattedAmount} Gs?`}
+                    label={
+                        <View style={styles.questionContainer}>
+                            <Text style={styles.questionBase}>
+                                {'¿Seguro/a que quieres prestar '}
+                                <Text style={styles.questionAmount}>
+                                    {formattedAmount}
+                                </Text>
+                                <Text style={styles.questionCurrency}>
+                                    Gs
+                                </Text>
+                                {'?'}
+                            </Text>
+                        </View>
+                    }
+                />
+
+                <Animated.ScrollView
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: Platform.OS === 'ios' ? 192 : 180 }]}
                     showsVerticalScrollIndicator={false}
                     bounces={false}
+                    scrollEventThrottle={16}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                        { useNativeDriver: true }
+                    )}
                 >
                     <View style={styles.topGroup}>
-                        {/* ── 1. Header ────────────────────────────────────── */}
-                        <View style={styles.header}>
-                            <HeadingTitle
-                                ubicacion="izq"
-                                actionType="setting"
-                                tamano="max"
-                                showChevron={true}
-                                showMultiStepProgressBar={false}
-                                showClose={false}
-                                showTitleContainer={true}
-                                showDescription={false}
-                                onPressBack={onBack}
-                                label={
-                                    <View style={styles.questionContainer}>
-                                        <Text style={styles.questionBase}>
-                                            {'¿Seguro/a que quieres prestar '}
-                                            <Text style={styles.questionAmount}>
-                                                {formattedAmount}
-                                            </Text>
-                                            <Text style={styles.questionCurrency}>
-                                                Gs
-                                            </Text>
-                                            {'?'}
-                                        </Text>
-                                    </View>
-                                }
-                            />
-                        </View>
-
                         {/* ── 2. Cards PLAZO + CUOTA ───────────────────────── */}
                         <View style={styles.cardsRow}>
                             <LoanDetailCard
@@ -211,7 +220,7 @@ export const ConfirmScreen = ({
                         </View>
 
                     </View>
-                </ScrollView>
+                </Animated.ScrollView>
 
                 {/* ── Bottom bar: FixedButtonBar pegado al fondo ── */}
                 <View style={styles.bottomBar}>
