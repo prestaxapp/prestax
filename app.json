@@ -2,6 +2,7 @@
   "expo": {
     "name": "prestax-mobile",
     "slug": "prestax-mobile",
+    "scheme": "prestax-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

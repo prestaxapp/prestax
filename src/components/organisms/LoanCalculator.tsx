@@ -173,6 +173,7 @@ export const LoanCalculator = () => {
                             minimumValue={0}
                             maximumValue={tranche.allowedMonths.length - 1}
                             step={1}
+                            disableAmountHover={true}
                             onValueChange={(val) => {
                                 setVisualMonthsIdx(val);
                                 const snapper = Math.round(val);

@@ -51,11 +51,18 @@ Adicionalmente, los datos sobre los ingresos y situación patrimonial informados
 
 3.2. No obstante lo anterior, el CLIENTE presta su consentimiento para que VIVA REPRESENTACIONES S.A. pueda compartir su información con terceros en los casos previstos por la ley o cuando sea necesario para la ejecución del contrato.`;
 
+import { SoundOverrideProvider } from '../context/SoundContext';
+
 export const TerminosScreen: React.FC<TerminosScreenProps> = ({ onBack, onAccept }) => {
     const scrollY = useRef(new Animated.Value(0)).current;
 
+    const terminosOverrides = {
+        action: require('../../assets/ui_sound/doc.mp3'),
+    };
+
     return (
-        <View style={styles.screen}>
+        <SoundOverrideProvider overrides={terminosOverrides}>
+            <View style={styles.screen}>
             {/* ── GradientVector decorativo de fondo ── */}
             <View style={styles.gradientBg} pointerEvents="none">
                 <GradientVector width="100%" height={393.909} />
@@ -111,6 +118,7 @@ export const TerminosScreen: React.FC<TerminosScreenProps> = ({ onBack, onAccept
                 />
             </View>
         </View>
+        </SoundOverrideProvider>
     );
 };
 

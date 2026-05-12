@@ -5,6 +5,7 @@ import { Text } from '../atoms/Text';
 import { Slider } from '../atoms/Slider';
 import { Metrics } from '../../theme/Metrics';
 import { Colors } from '../../theme/Colors';
+import { useSound, useSoundOverride } from '../../context/SoundContext';
 
 interface LabeledSliderProps {
     title: string;
@@ -23,6 +24,7 @@ interface LabeledSliderProps {
     rawInput?: string;
     onRawInputChange?: (v: string) => void;
     onRawInputSubmit?: () => void;
+    disableAmountHover?: boolean;
 }
 
 export const LabeledSlider = ({
@@ -41,7 +43,10 @@ export const LabeledSlider = ({
     rawInput,
     onRawInputChange,
     onRawInputSubmit,
+    disableAmountHover,
 }: LabeledSliderProps) => {
+    const { playSound } = useSound();
+    const { overrides } = useSoundOverride();
     // Shimmer animation
     const shimmerAnim = useRef(new Animated.Value(-1)).current;
     // Caret animation
@@ -140,7 +145,20 @@ export const LabeledSlider = ({
                             </Text>
                         </View>
                     ) : (
-                        <TouchableOpacity onPress={onAmountPress} activeOpacity={onAmountPress ? 0.7 : 1} style={styles.amountPressable}>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                playSound('action', overrides['action']);
+                                onAmountPress?.();
+                            }} 
+                            activeOpacity={onAmountPress ? 0.7 : 1} 
+                            style={styles.amountPressable}
+                            // @ts-ignore - works on web
+                            onMouseEnter={() => {
+                                if (!disableAmountHover) {
+                                    playSound('hover', overrides['hover']);
+                                }
+                            }}
+                        >
                             <Text variant="displayAmount" color="white" numeric>{amount}</Text>
 
                             {/* Shimmer Wave Overlay */}

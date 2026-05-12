@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, Animated, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, TextInput, Animated, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Text } from '../atoms/Text';
@@ -7,6 +7,7 @@ import { Icon } from '../atoms/Icon';
 import { Colors } from '../../theme/Colors';
 import { Metrics } from '../../theme/Metrics';
 import { useStickyHeaderAnimation } from '../../animations/useStickyHeaderAnimation';
+import { useSound, useSoundOverride } from '../../context/SoundContext';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
@@ -100,21 +101,49 @@ export type HeadingTitleProps =
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BackButton: React.FC<{ show?: boolean; onPress?: () => void }> = ({ show, onPress }) => {
+    const { playSound } = useSound();
+    const { overrides } = useSoundOverride();
+    
     if (!show) return null;
+
+    const handlePress = () => {
+        playSound('back', overrides['back']);
+        onPress?.();
+    };
+
     return (
-        <TouchableOpacity style={styles.iconButton} onPress={onPress} activeOpacity={0.7}>
+        <Pressable 
+            style={({ pressed }) => [styles.iconButton, { opacity: pressed ? 0.7 : 1 }]} 
+            onPress={handlePress}
+            // @ts-ignore - web support
+            onHoverIn={() => playSound('hover', overrides['hover'])}
+        >
             <Icon name="chevron-back" size={36} color="white" />
-        </TouchableOpacity>
+        </Pressable>
     );
 };
 
 const CloseButton: React.FC<{ show?: boolean; onPress?: () => void }> = ({ show, onPress }) => {
+    const { playSound } = useSound();
+    const { overrides } = useSoundOverride();
+    
     if (!show) return null;
+
+    const handlePress = () => {
+        playSound('action', overrides['action']);
+        onPress?.();
+    };
+
     return (
-        <TouchableOpacity style={styles.iconButton} onPress={onPress} activeOpacity={0.7}>
+        <Pressable 
+            style={({ pressed }) => [styles.iconButton, { opacity: pressed ? 0.7 : 1 }]} 
+            onPress={handlePress}
+            // @ts-ignore - web support
+            onHoverIn={() => playSound('hover', overrides['hover'])}
+        >
             {/* @ts-ignore - 'close' not yet in ICON_REGISTRY */}
             <Icon name="close" size={20} color="white" />
-        </TouchableOpacity>
+        </Pressable>
     );
 };
 

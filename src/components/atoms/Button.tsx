@@ -3,6 +3,7 @@ import { StyleSheet, ActivityIndicator, ViewStyle, Pressable, View, Platform, An
 import { Text } from './Text';
 import { Colors } from '../../theme/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSound, useSoundOverride } from '../../context/SoundContext';
 
 interface ButtonProps {
     title: string;
@@ -31,9 +32,26 @@ interface ButtonProps {
  * <Button title="Confirmar" variant="primary" onPress={handleConfirm} />
  */
 export const Button = ({ title, onPress, disabled, loading, style, variant = 'primary' }: ButtonProps) => {
+    const { playSound } = useSound();
+    const { overrides } = useSoundOverride();
     const [isHovered, setIsHovered] = useState(false);
     const [isPressed, setIsPressed] = useState(false);
     const scaleAnim = useRef(new Animated.Value(1)).current;
+
+    const handlePress = () => {
+        if (!disabled && !loading) {
+            const soundType = variant === 'text' ? 'back' : 'action';
+            playSound(soundType, overrides[soundType]);
+            onPress();
+        }
+    };
+
+    const handleHoverIn = () => {
+        setIsHovered(true);
+        if (!disabled && !loading) {
+            playSound('hover', overrides['hover']);
+        }
+    };
 
     const handlePressIn = () => {
         setIsPressed(true);
@@ -56,9 +74,9 @@ export const Button = ({ title, onPress, disabled, loading, style, variant = 'pr
     if (variant === 'text') {
         return (
             <Pressable
-                onPress={onPress}
+                onPress={handlePress}
                 disabled={disabled || loading}
-                onHoverIn={() => setIsHovered(true)}
+                onHoverIn={handleHoverIn}
                 onHoverOut={() => setIsHovered(false)}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
@@ -127,9 +145,9 @@ export const Button = ({ title, onPress, disabled, loading, style, variant = 'pr
 
     return (
         <Pressable
-            onPress={onPress}
+            onPress={handlePress}
             disabled={disabled || loading}
-            onHoverIn={() => setIsHovered(true)}
+            onHoverIn={handleHoverIn}
             onHoverOut={() => setIsHovered(false)}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}

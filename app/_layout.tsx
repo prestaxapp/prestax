@@ -2,6 +2,8 @@ import React from 'react';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 
+import { SoundProvider } from '../src/context/SoundContext';
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     'Lufga-ExtraLight': require('../assets/fonts/Lufga-ExtraLight.ttf'),
@@ -12,6 +14,8 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false }} />
+    <SoundProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </SoundProvider>
   );
 }
