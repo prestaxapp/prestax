@@ -34,7 +34,7 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     // Pool de objetos de sonido
     const soundsRef = useRef<Record<string, Audio.Sound>>({});
-    const loadingPromises = useRef<Record<string, Promise<Audio.Sound | null>>>({});
+    const loadingPromises = useRef<Partial<Record<string, Promise<Audio.Sound | null>>>>({});
 
     // 1. Inicialización Ultra-Rápida del Motor
     useEffect(() => {
@@ -49,7 +49,7 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
                     playThroughEarpieceAndroid: false,
                 });
-            } catch (e) {}
+            } catch {}
         };
         initAudio();
     }, []);
@@ -66,7 +66,7 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     if (v !== null) setVolumeState(parseFloat(v));
                     if (m !== null) setIsMutedState(m === 'true');
                 }
-            } catch (e) {}
+            } catch {}
         };
         loadSettings();
     }, []);
@@ -88,7 +88,7 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 );
                 soundsRef.current[id] = sound;
                 return sound;
-            } catch (e) {
+            } catch {
                 return null;
             } finally {
                 delete loadingPromises.current[id];
@@ -100,6 +100,7 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Pre-cargar esenciales + Listener para desbloquear Audio en Web
     useEffect(() => {
+        const sounds = soundsRef.current;
         Object.entries(STATIC_ASSETS).forEach(([key, asset]) => getOrLoadSound(key, asset));
 
         // Hack para Web: Muchos browsers bloquean audio hasta el primer click
@@ -115,18 +116,18 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         return () => {
-            Object.values(soundsRef.current).forEach(s => s.unloadAsync());
+            Object.values(sounds).forEach(s => s.unloadAsync());
         };
     }, []);
 
     const setVolume = async (v: number) => {
         setVolumeState(v);
-        try { if (AsyncStorage?.setItem) await AsyncStorage.setItem(STORAGE_KEYS.VOLUME, v.toString()); } catch (e) {}
+        try { if (AsyncStorage?.setItem) await AsyncStorage.setItem(STORAGE_KEYS.VOLUME, v.toString()); } catch {}
     };
 
     const setIsMuted = async (m: boolean) => {
         setIsMutedState(m);
-        try { if (AsyncStorage?.setItem) await AsyncStorage.setItem(STORAGE_KEYS.MUTED, m.toString()); } catch (e) {}
+        try { if (AsyncStorage?.setItem) await AsyncStorage.setItem(STORAGE_KEYS.MUTED, m.toString()); } catch {}
     };
 
     // 4. Reproducción Instantánea (Sin InteractionManager para evitar lagueo en UI rápida)
@@ -157,7 +158,7 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 });
             }
 
-        } catch (error) {
+        } catch {
             // Error silencioso para no romper la UX
         }
     }, [isMuted, volume]);

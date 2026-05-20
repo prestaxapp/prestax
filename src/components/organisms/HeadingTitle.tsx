@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Pressable, TextInput, Animated, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, TextInput, Animated, Platform, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Text } from '../atoms/Text';

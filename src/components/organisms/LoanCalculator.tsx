@@ -1,37 +1,43 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-    View, StyleSheet, Platform, Alert,
+    View, StyleSheet, Alert,
     Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LabeledSlider } from '../molecules/LabeledSlider';
 import { ListDetails } from '../molecules/ListDetails';
 import { Button } from '../atoms/Button';
+import { InfoTooltip } from '../atoms/InfoTooltip';
 import { ConfirmScreen } from '../../screens/ConfirmScreen';
 import { YouFormScreen } from '../../screens/YouFormScreen';
-import { TerminosScreen } from '../../screens/TerminosScreen';
+import { TerminosScreen, TERMINOS_HASH, TERMINOS_VERSION } from '../../screens/TerminosScreen';
 import { CrossFadeSlideTransition } from '../animations/CrossFadeSlideTransition';
 import { sendLeadMetadata } from '../../services/GoogleSheetsService';
 import { generateSessionId, createPreSolicitud, logConsent } from '../../services/SupabaseService';
 import { getDeviceInfo } from '../../utils/deviceInfo';
 import {
-    calculateLoanV2, CALCULATOR_CONFIG_V2, formatCurrency,
-    getTrancheV2,
-} from '../../utils/calculatorLogicV2';
+    calculateLoanV3, CALCULATOR_CONFIG_V3, formatCurrency,
+    getTrancheV3,
+} from '../../utils/calculatorLogicV3';
 import { Metrics } from '../../theme/Metrics';
 import { Colors } from '../../theme/Colors';
 
 /**
- * LoanCalculator — versión vigente
+ * LoanCalculator — versión V3 (cuota estimada)
  *
- * Rango: 1.000.000 → 5.000.000 Gs | Cuotas: 3 · 6 · 12
- * Lógica de cálculo idéntica a la versión original (French, TAE, TIN, gastos, IVA).
+ * Rango: 1.000.000 → 30.000.000 Gs | Cuotas: 6 · 8 · 10 · 12 · 15 · 18 · 24
+ *
+ * Calcula la cuota estimada como promedio entre los cuoteros Tking (caro)
+ * y Solar (barato), con interpolación lineal para montos intermedios.
+ *
+ * Muestra "Cuota estimada" con un ícono ℹ️ y tooltip que indica la
+ * variación posible respecto al monto referencial.
  *
  * Versión anterior archivada en: src/archives/LoanCalculator.original.tsx.bak
  */
 export const LoanCalculator = () => {
     const [amount, setAmount] = useState(1_000_000);
-    const [months, setMonths] = useState(3);
+    const [months, setMonths] = useState(6);
     const [visualMonthsIdx, setVisualMonthsIdx] = useState(0);
     const [loading, setLoading] = useState(false);
     // 4 states: 'calculator' | 'confirm' | 'terminos' | 'youform'
@@ -42,7 +48,7 @@ export const LoanCalculator = () => {
     const [editingAmount, setEditingAmount] = useState(false);
     const [rawInput, setRawInput] = useState('');
 
-    const tranche = useMemo(() => getTrancheV2(amount), [amount]);
+    const tranche = useMemo(() => getTrancheV3(amount), [amount]);
 
     const effectiveMonths = useMemo(() => {
         if (tranche.allowedMonths.includes(months)) return months;
@@ -56,12 +62,20 @@ export const LoanCalculator = () => {
     }, [effectiveMonths, tranche.allowedMonths]);
 
     const loanDetails = useMemo(
-        () => calculateLoanV2(amount, effectiveMonths),
+        () => calculateLoanV3(amount, effectiveMonths),
         [amount, effectiveMonths],
     );
 
+    /**
+     * Mensaje del tooltip para "Cuota estimada".
+     */
+    const tooltipMessage = useMemo(() => {
+        if (!loanDetails.isValid) return '';
+        return `Es un monto referencial y está sujeto a aprobación crediticia`;
+    }, [loanDetails.isValid]);
+
     const handleAmountChange = useCallback((val: number) => {
-        const clamped = Math.min(Math.max(val, CALCULATOR_CONFIG_V2.MIN_AMOUNT), CALCULATOR_CONFIG_V2.MAX_AMOUNT);
+        const clamped = Math.min(Math.max(val, CALCULATOR_CONFIG_V3.MIN_AMOUNT), CALCULATOR_CONFIG_V3.MAX_AMOUNT);
         setAmount(clamped);
     }, []);
 
@@ -76,7 +90,9 @@ export const LoanCalculator = () => {
         Keyboard.dismiss();
     }, [rawInput, handleAmountChange]);
 
-    const handleSubmit = useCallback(() => {
+    const handleSubmit = useCallback(async () => {
+        if (loading) return;
+
         if (!loanDetails.isValid) {
             Alert.alert('Monto no permitido', 'Por favor selecciona un monto válido según los plazos disponibles.');
             return;
@@ -86,19 +102,30 @@ export const LoanCalculator = () => {
         const newSessionId = generateSessionId();
         setSessionId(newSessionId);
 
-        // Crear pre_solicitud en Supabase (non-blocking — no detiene la UI)
+        setLoading(true);
+
         const { deviceModel, deviceOS } = getDeviceInfo();
-        createPreSolicitud({
+        const created = await createPreSolicitud({
             session_id: newSessionId,
             monto: amount,
             cuotas: effectiveMonths,
             cuota_mensual: loanDetails.monthlyQuota,
             device_model: deviceModel,
             device_os: deviceOS,
-        }).catch(err => console.warn('Pre-solicitud send failed silently:', err));
+        });
+
+        setLoading(false);
+
+        if (!created) {
+            Alert.alert(
+                'No pudimos iniciar la solicitud',
+                'Revisá tu conexión e intentá nuevamente. No vamos a avanzar sin registrar los datos iniciales.',
+            );
+            return;
+        }
 
         setScreen('confirm');
-    }, [loanDetails.isValid, amount, effectiveMonths, loanDetails.monthlyQuota]);
+    }, [loading, loanDetails.isValid, amount, effectiveMonths, loanDetails.monthlyQuota]);
 
     // ConfirmScreen → TerminosScreen
     const handleConfirmContinue = useCallback(() => {
@@ -106,29 +133,52 @@ export const LoanCalculator = () => {
     }, []);
 
     const handleConfirm = useCallback(async () => {
-        // 1. Registrar consentimiento legal en Supabase (non-blocking)
-        logConsent({
+        if (loading) return;
+
+        if (!sessionId) {
+            Alert.alert(
+                'Solicitud incompleta',
+                'Volvé a la calculadora e intentá iniciar la solicitud nuevamente.',
+            );
+            return;
+        }
+
+        setLoading(true);
+
+        const consentLogged = await logConsent({
             session_id: sessionId,
             consent_type: 'terminos_y_condiciones',
-            consent_version: 'v1.0',
-        }).catch(err => console.warn('Consent log failed silently:', err));
+            consent_version: TERMINOS_VERSION,
+            terms_hash: TERMINOS_HASH,
+        });
+
+        setLoading(false);
+
+        if (!consentLogged) {
+            Alert.alert(
+                'No pudimos registrar tu aceptación',
+                'Revisá tu conexión e intentá nuevamente antes de continuar.',
+            );
+            return;
+        }
 
         // 2. Capturar info del dispositivo para Google Sheet
         const { deviceModel, deviceOS } = getDeviceInfo();
         const timestamp = new Date().toISOString();
 
         // 3. Enviar metadata al Google Sheet (mantener Excel existente)
-        sendLeadMetadata({
+        void sendLeadMetadata({
+            session_id: sessionId,
             monto: amount,
             cuotas: effectiveMonths,
             deviceModel,
             deviceOS,
             timestamp,
-        }).catch(err => console.warn('Lead metadata send failed silently:', err));
+        });
 
         // 4. Transicionar a YouForm inmediatamente, sin esperar respuestas
         setScreen('youform');
-    }, [amount, effectiveMonths, sessionId]);
+    }, [loading, amount, effectiveMonths, sessionId]);
 
     const monthsLabel = effectiveMonths === 1 ? 'cuota' : 'cuotas';
 
@@ -146,12 +196,12 @@ export const LoanCalculator = () => {
                             title="¿Cuánto necesitás?"
                             amount={formatCurrency(amount)}
                             currencyOrUnit="Gs"
-                            minLabel={`${formatCurrency(CALCULATOR_CONFIG_V2.MIN_AMOUNT)} Gs`}
-                            maxLabel={`${formatCurrency(CALCULATOR_CONFIG_V2.MAX_AMOUNT)} Gs`}
+                            minLabel={`${formatCurrency(CALCULATOR_CONFIG_V3.MIN_AMOUNT)} Gs`}
+                            maxLabel={`${formatCurrency(CALCULATOR_CONFIG_V3.MAX_AMOUNT)} Gs`}
                             value={amount}
-                            minimumValue={CALCULATOR_CONFIG_V2.MIN_AMOUNT}
-                            maximumValue={CALCULATOR_CONFIG_V2.MAX_AMOUNT}
-                            step={CALCULATOR_CONFIG_V2.AMOUNT_STEP}
+                            minimumValue={CALCULATOR_CONFIG_V3.MIN_AMOUNT}
+                            maximumValue={CALCULATOR_CONFIG_V3.MAX_AMOUNT}
+                            step={CALCULATOR_CONFIG_V3.AMOUNT_STEP}
                             onValueChange={handleAmountChange}
                             onAmountPress={() => {
                                 setRawInput(amount.toString());
@@ -185,13 +235,24 @@ export const LoanCalculator = () => {
                     </View>
 
                     <View testID="summary-section" style={styles.summarySection}>
-                        <ListDetails
-                            iconName="today"
-                            label="Cuota Mensual"
-                            value={loanDetails.isValid ? `${formatCurrency(loanDetails.monthlyQuota)} Gs` : '---'}
-                            isPrimary
-                            style={styles.primaryRow}
-                        />
+                        {/* ── Cuota estimada + ℹ️ tooltip ── */}
+                        <View style={styles.primaryRowWrapper}>
+                            <ListDetails
+                                iconName="today"
+                                label="Cuota estimada"
+                                value={loanDetails.isValid ? `${formatCurrency(loanDetails.monthlyQuota)} Gs` : '---'}
+                                isPrimary
+                                style={styles.primaryRow}
+                                rightAccessory={
+                                    loanDetails.isValid ? (
+                                        <InfoTooltip
+                                            message={tooltipMessage}
+                                            iconSize={14}
+                                        />
+                                    ) : undefined
+                                }
+                            />
+                        </View>
 
                         <View testID="detail-card" style={styles.secondaryCard}>
                             <ListDetails
@@ -249,6 +310,7 @@ export const LoanCalculator = () => {
         <TerminosScreen
             onBack={() => setScreen('confirm')}
             onAccept={handleConfirm}
+            loading={loading}
         />
     );
 
@@ -307,6 +369,9 @@ const styles = StyleSheet.create({
     summarySection: {
         paddingHorizontal: Metrics.padding8,
         gap: Metrics.gap8,
+    },
+    primaryRowWrapper: {
+        zIndex: 100, // Ensure tooltip renders above other elements
     },
     primaryRow: {
         borderRadius: Metrics.borderRadius100,

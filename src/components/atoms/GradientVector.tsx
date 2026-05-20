@@ -1,10 +1,10 @@
 import React from 'react';
-import { StyleSheet, View, Image } from 'react-native';
-import { Metrics } from '../../theme/Metrics';
+import { View, Image } from 'react-native';
+import type { DimensionValue } from 'react-native';
 
 interface Props {
-    width?: number | string;
-    height?: number | string;
+    width?: DimensionValue;
+    height?: DimensionValue;
 }
 
 export const GradientVector = ({ width = '100%', height = 300 }: Props) => {

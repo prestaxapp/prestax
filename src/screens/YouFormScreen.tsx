@@ -14,6 +14,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { Text } from '../components/atoms/Text';
 import { Colors } from '../theme/Colors';
+import { ENV, isConfigured } from '../config/env';
 
 // Conditional import — only loaded on native platforms
 let WebView: any = null;
@@ -24,11 +25,6 @@ if (Platform.OS !== 'web') {
         // Will render fallback if package is missing
     }
 }
-
-// ─── CONFIGURACIÓN ────────────────────────────────────────────────────────────
-const YOUFORM_URL = 'https://app.youform.com/forms/vbyuoc6z';
-const PLACEHOLDER_URL = 'YOUFORM_URL_PENDIENTE';
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface YouFormScreenProps {
     /** Monto pre-seleccionado para pre-fill (si YouForm soporta query params) */
@@ -43,10 +39,18 @@ export const YouFormScreen: React.FC<YouFormScreenProps> = ({ amount, months, se
     const [isLoading, setIsLoading] = useState(true);
 
     // Construir URL con query params para pre-fill si el form lo soporta
-    const isPending = (YOUFORM_URL as string) === PLACEHOLDER_URL;
+    const isPending = !isConfigured(ENV.YOUFORM_URL);
+    const queryParams = [
+        ['amount', amount?.toString() ?? ''],
+        ['months', months?.toString() ?? ''],
+        ['session_id', sessionId ?? ''],
+    ]
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+        .join('&');
+    const separator = ENV.YOUFORM_URL.includes('?') ? '&' : '?';
     const formUrl = !isPending
-        ? `${YOUFORM_URL}?amount=${amount ?? ''}&months=${months ?? ''}&session_id=${sessionId ?? ''}`
-        : YOUFORM_URL;
+        ? `${ENV.YOUFORM_URL}${separator}${queryParams}`
+        : ENV.YOUFORM_URL;
 
     if (isPending) {
         return (

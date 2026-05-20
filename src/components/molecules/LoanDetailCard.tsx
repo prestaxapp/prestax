@@ -24,7 +24,6 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from '../atoms/Text';
 import { Icon, IconName } from '../atoms/Icon';
 import { Colors } from '../../theme/Colors';
-import { Metrics } from '../../theme/Metrics';
 
 interface LoanDetailCardProps {
     iconName: IconName;

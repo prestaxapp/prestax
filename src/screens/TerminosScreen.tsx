@@ -28,14 +28,16 @@ import { HeadingTitle } from '../components/organisms/HeadingTitle';
 import { FixedButtonBar } from '../components/organisms/FixedButtonBar';
 import { GradientVector } from '../components/atoms/GradientVector';
 import { Colors } from '../theme/Colors';
-import { Metrics } from '../theme/Metrics';
+import { sha256 } from '../utils/sha256';
+import { SoundOverrideProvider } from '../context/SoundContext';
 
 interface TerminosScreenProps {
     onBack: () => void;
     onAccept: () => void;
+    loading?: boolean;
 }
 
-const TERMINOS_TEXT = `2.4. El CLIENTE comprende y acepta VIVA REPRESENTACIONES S.A podrá tercerizar en otras empresas que no sean VIVA REPRESENTACIONES S.A. la revisión de la identidad del CLIENTE, la elegibilidad del CLIENTE para ser parte de este Contrato, o de recibir un producto o servicio proveído por VIVA REPRESENTACIONES S.A, entre otros. En tal sentido, el CLIENTE, para poder acceder a los servicios o productos ofrecidos por VIVA REPRESENTACIONES S.A. se obliga a otorgar verazmente a tales empresas tercerizadas todos los datos por éstas requeridas, incluyendo pero no limitándose a la autorización de la toma de una fotografía (retrato) de su rostro, y la toma de un archivo digital biométrico de su/s huella/s dactilar/es. Todos estos datos serán utilizados por VIVA REPRESENTACIONES S.A a efectos de analizar la elegibilidad del CLIENTE y también para fortalecer los procesos de seguridad y de prevención de fraude de la empresa.
+export const TERMINOS_TEXT = `2.4. El CLIENTE comprende y acepta VIVA REPRESENTACIONES S.A podrá tercerizar en otras empresas que no sean VIVA REPRESENTACIONES S.A. la revisión de la identidad del CLIENTE, la elegibilidad del CLIENTE para ser parte de este Contrato, o de recibir un producto o servicio proveído por VIVA REPRESENTACIONES S.A, entre otros. En tal sentido, el CLIENTE, para poder acceder a los servicios o productos ofrecidos por VIVA REPRESENTACIONES S.A. se obliga a otorgar verazmente a tales empresas tercerizadas todos los datos por éstas requeridas, incluyendo pero no limitándose a la autorización de la toma de una fotografía (retrato) de su rostro, y la toma de un archivo digital biométrico de su/s huella/s dactilar/es. Todos estos datos serán utilizados por VIVA REPRESENTACIONES S.A a efectos de analizar la elegibilidad del CLIENTE y también para fortalecer los procesos de seguridad y de prevención de fraude de la empresa.
 
 Adicionalmente, los datos sobre los ingresos y situación patrimonial informados a VIVA REPRESENTACIONES S.A, en la manifestación de bienes, o en cualquier anexo firmado que integra este documento, podrán ser verificados por VIVA REPRESENTACIONES S.A o las empresas tercerizadas, en cumplimiento de las disposiciones legales vigentes.
 
@@ -51,9 +53,10 @@ Adicionalmente, los datos sobre los ingresos y situación patrimonial informados
 
 3.2. No obstante lo anterior, el CLIENTE presta su consentimiento para que VIVA REPRESENTACIONES S.A. pueda compartir su información con terceros en los casos previstos por la ley o cuando sea necesario para la ejecución del contrato.`;
 
-import { SoundOverrideProvider } from '../context/SoundContext';
+export const TERMINOS_VERSION = 'v1.0';
+export const TERMINOS_HASH = sha256(TERMINOS_TEXT);
 
-export const TerminosScreen: React.FC<TerminosScreenProps> = ({ onBack, onAccept }) => {
+export const TerminosScreen: React.FC<TerminosScreenProps> = ({ onBack, onAccept, loading = false }) => {
     const scrollY = useRef(new Animated.Value(0)).current;
 
     const terminosOverrides = {
@@ -115,6 +118,7 @@ export const TerminosScreen: React.FC<TerminosScreenProps> = ({ onBack, onAccept
                     onPressPrimary={onAccept}
                     onPressBack={onBack}
                     backLabel="No acepto"
+                    loading={loading}
                 />
             </View>
         </View>

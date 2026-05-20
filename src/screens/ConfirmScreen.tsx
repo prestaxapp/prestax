@@ -38,7 +38,6 @@ import React, { useRef } from 'react';
 import {
     View,
     StyleSheet,
-    TouchableOpacity,
     Image,
     Animated,
     Platform,

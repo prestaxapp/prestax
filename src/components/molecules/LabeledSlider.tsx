@@ -88,7 +88,7 @@ export const LabeledSlider = ({
             if (caretTimeout.current) clearTimeout(caretTimeout.current);
             blink.stop();
         };
-    }, [amount]); // Trigger when amount text changes
+    }, [amount, caretOpacity, onAmountPress, shimmerAnim]); // Trigger when amount text changes
 
     const translateX = shimmerAnim.interpolate({
         inputRange: [-1, 1],

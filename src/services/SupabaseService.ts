@@ -16,13 +16,10 @@
  *   permitiendo hacer JOIN entre las 3 tablas.
  */
 
-// ─── CONFIGURACIÓN ────────────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://czehdflereoajjrlbpzj.supabase.co';
+import { ENV, isConfigured } from '../config/env';
 
-// Edge Function endpoints
-const CREATE_PRE_SOLICITUD_FN = `${SUPABASE_URL}/functions/v1/create-pre-solicitud`;
-const LOG_CONSENT_FN = `${SUPABASE_URL}/functions/v1/log-consent`;
-// ─────────────────────────────────────────────────────────────────────────────
+const getFunctionUrl = (functionName: string) =>
+    `${ENV.SUPABASE_URL}/functions/v1/${functionName}`;
 
 // ─── SESSION ID ──────────────────────────────────────────────────────────────
 
@@ -32,6 +29,9 @@ const LOG_CONSENT_FN = `${SUPABASE_URL}/functions/v1/log-consent`;
  * entre pre_solicitudes, consent_log y solicitudes (YouForm).
  */
 export const generateSessionId = (): string => {
+    const randomUUID = globalThis.crypto?.randomUUID?.bind(globalThis.crypto);
+    if (randomUUID) return randomUUID();
+
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
         const r = (Math.random() * 16) | 0;
         const v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -60,10 +60,13 @@ export interface PreSolicitudPayload {
  * @returns true si se creó exitosamente
  */
 export const createPreSolicitud = async (data: PreSolicitudPayload): Promise<boolean> => {
-    console.log('📊 [Supabase] Creating pre_solicitud:', data.session_id);
+    if (!isConfigured(ENV.SUPABASE_URL)) {
+        console.error('[Supabase] Missing EXPO_PUBLIC_SUPABASE_URL');
+        return false;
+    }
 
     try {
-        const response = await fetch(CREATE_PRE_SOLICITUD_FN, {
+        const response = await fetch(getFunctionUrl('create-pre-solicitud'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -79,15 +82,13 @@ export const createPreSolicitud = async (data: PreSolicitudPayload): Promise<boo
         const result = await response.json();
 
         if (result.success) {
-            console.log('✅ [Supabase] Pre-solicitud created:', data.session_id);
             return true;
         } else {
-            console.error('❌ [Supabase] Pre-solicitud error:', result.error);
+            console.error('[Supabase] Pre-solicitud error:', result.error);
             return false;
         }
     } catch (error) {
-        // Non-blocking: errores de red no interrumpen el flujo del usuario
-        console.error('❌ [Supabase] Failed to create pre-solicitud:', error);
+        console.error('[Supabase] Failed to create pre-solicitud:', error);
         return false;
     }
 };
@@ -111,10 +112,13 @@ export interface ConsentPayload {
  * @returns true si se registró exitosamente
  */
 export const logConsent = async (data: ConsentPayload): Promise<boolean> => {
-    console.log('📋 [Supabase] Logging consent for session:', data.session_id);
+    if (!isConfigured(ENV.SUPABASE_URL)) {
+        console.error('[Supabase] Missing EXPO_PUBLIC_SUPABASE_URL');
+        return false;
+    }
 
     try {
-        const response = await fetch(LOG_CONSENT_FN, {
+        const response = await fetch(getFunctionUrl('log-consent'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -135,15 +139,13 @@ export const logConsent = async (data: ConsentPayload): Promise<boolean> => {
         const result = await response.json();
 
         if (result.success) {
-            console.log('✅ [Supabase] Consent logged:', data.session_id);
             return true;
         } else {
-            console.error('❌ [Supabase] Consent log error:', result.error);
+            console.error('[Supabase] Consent log error:', result.error);
             return false;
         }
     } catch (error) {
-        // Non-blocking: no interrumpir el flujo aunque falle
-        console.error('❌ [Supabase] Failed to log consent:', error);
+        console.error('[Supabase] Failed to log consent:', error);
         return false;
     }
 };

@@ -9,7 +9,6 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from './Text';
 import { Colors } from '../../theme/Colors';
-import { Metrics } from '../../theme/Metrics';
 
 interface RequirementBadgeProps {
     label: string | React.ReactNode;

@@ -9,14 +9,13 @@
  *  3. Columns A-M are written by YouForm natively.
  *
  * CORRELACIÓN:
- *  Usar el campo "timestamp" para cruzar filas de Prestax con filas de YouForm.
- *  Ambos eventos ocurren con segundos de diferencia para el mismo usuario.
+ *  Usar `session_id` como identificador primario. `timestamp` queda como respaldo.
  */
 
-const APPS_SCRIPT_URL =
-    'https://script.google.com/macros/s/AKfycbw_Oy6vQ_XaE_VVa5JlN_L0ayCx0zXzXwZsrb_W63k_dNTWwC366mXFh92KnCZGnd54Jw/exec';
+import { ENV, isConfigured } from '../config/env';
 
 export interface LeadMetadata {
+    session_id: string;
     monto: number;
     cuotas: number;
     deviceModel: string;
@@ -31,10 +30,13 @@ export interface LeadMetadata {
  * @returns true si el envío fue exitoso, false si hubo error
  */
 export const sendLeadMetadata = async (data: LeadMetadata): Promise<boolean> => {
-    console.log('📊 Sending lead metadata to Google Sheets:', data);
+    if (!isConfigured(ENV.APPS_SCRIPT_URL)) {
+        console.warn('[GoogleSheets] Missing EXPO_PUBLIC_APPS_SCRIPT_URL. Skipping metadata sync.');
+        return false;
+    }
 
     try {
-        const response = await fetch(APPS_SCRIPT_URL, {
+        const response = await fetch(ENV.APPS_SCRIPT_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'text/plain', // Apps Script requiere text/plain para evitar CORS preflight
@@ -49,15 +51,14 @@ export const sendLeadMetadata = async (data: LeadMetadata): Promise<boolean> => 
         const result = await response.json();
 
         if (result.success) {
-            console.log('✅ Lead metadata sent successfully');
             return true;
         } else {
-            console.error('❌ Apps Script reported error:', result.error);
+            console.error('[GoogleSheets] Apps Script reported error:', result.error);
             return false;
         }
     } catch (error) {
         // Non-blocking: errores de red no deben interrumpir el flujo del usuario
-        console.error('❌ Failed to send lead metadata:', error);
+        console.error('[GoogleSheets] Failed to send lead metadata:', error);
         return false;
     }
 };
@@ -78,9 +79,8 @@ export interface LeadData {
 }
 
 export const submitLeadToCRM = async (leadData: LeadData): Promise<boolean> => {
-    console.log('📝 [Legacy] Lead captured:', leadData);
     if (!config.ZAPIER_WEBHOOK_URL) {
-        console.warn('⚠️ No Webhook URL configured. Skipping CRM submission.');
+        console.warn('[Legacy] No Webhook URL configured. Skipping CRM submission.');
         return true;
     }
     try {
@@ -91,7 +91,7 @@ export const submitLeadToCRM = async (leadData: LeadData): Promise<boolean> => {
         });
         return response.ok;
     } catch (error) {
-        console.error('❌ CRM submission failed:', error);
+        console.error('[Legacy] CRM submission failed:', error);
         return false;
     }
 };

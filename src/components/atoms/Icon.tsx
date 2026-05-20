@@ -15,6 +15,7 @@ import { IconHourglass } from './icons/IconHourglass';
 import { IconCalendarPick } from './icons/IconCalendarPick';
 import { IconState } from './icons/IconState';
 import { IconChevron } from './icons/IconChevron';
+import { IconInfo } from './icons/IconInfo';
 
 // Registry — add new custom SVG components here
 const ICON_REGISTRY = {
@@ -35,6 +36,7 @@ const ICON_REGISTRY = {
     'calendar.pick': IconCalendarPick,
     'state': IconState,
     'chevron-back': IconChevron,
+    'info': IconInfo,
 } as const;
 
 export type IconName = keyof typeof ICON_REGISTRY;

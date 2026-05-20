@@ -18,30 +18,39 @@ Deno.serve(async (req) => {
     fields[field.question] = field.answer
   }
 
-  console.log("FIELDS:", JSON.stringify(fields, null, 2))
+  const getField = (...keys: string[]) =>
+    keys.map((key) => fields[key]).find((value) => value !== undefined && value !== null && value !== "")
+
+  const getUploadUrl = (value: any) => {
+    if (Array.isArray(value)) return value[0]?.url ?? null
+    return value?.url ?? value ?? null
+  }
+
+  const isYes = (value: unknown) =>
+    typeof value === "string" && value.trim().toLowerCase() === "si"
 
   const { error } = await supabase.from("solicitudes").insert({
-    nombre_completo:            fields["Mi nombre completo es"] ?? null,
-    cedula:                     fields["Mi número de cédula es"] ?? null,
-    celular:                    fields["Mi celular es"] ?? null,
-    email:                      fields["Mi E-mail es"] ?? null,
-    fecha_nacimiento:           fields["Mi cumpleaño es el"] ?? null,
-    ruc:                        fields["Mi RUC es"] ?? null,
-    doc_identidad_extranjera:   fields["Mi Documento de identidad extranjera es"] ?? null,
-    cert_residencia_permanente: fields["Certificado de resiedencia permanente"] ?? null,
-    metodo_cobro:               fields["¿Dónde quieres recibir el dinero?"] ?? null,
-    tipo_alias:                 fields["Por favor, elija tipo de alias👇"] ?? null,
-    banco:                      fields["Ingrese su cuenta bancaria"]?.first_name ?? null,
-    numero_cuenta:              fields["Ingrese su cuenta bancaria"]?.last_name ?? null,
-    inforconf_limpio:           fields["¿Tenés Inforconf limpio?"] === "Si",
-    antiguedad_laboral_6meses:  fields["¿Tenés más de 6 meses de antigüedad laboral?"] === "Si",
-    ingresos_mensuales:         parseFloat(fields["Ingresos aproximados por mes"]) || null,
-    perfil_laboral:             fields["Perfil laboral actual"] ?? null,
-    liquidaciones_ips:          fields["Subí tus liquidaciones de IPS (opcional)"] ?? null,
-    formularios_iva:            fields["Subí tus formularios 120 de IVA (opcional)"] ?? null,
-    selfie_cedula:              fields["Por favor subí una foto con su cedula"]?.[0]?.url ?? null,
+    nombre_completo:            getField("Mi nombre completo es", "nombre_completo", "Nombre completo") ?? null,
+    cedula:                     getField("Mi número de cédula es", "cedula", "Cédula") ?? null,
+    celular:                    getField("Mi celular es", "celular", "Celular") ?? null,
+    email:                      getField("Mi E-mail es", "email", "Email") ?? null,
+    fecha_nacimiento:           getField("Mi cumpleaño es el", "fecha_nacimiento", "Fecha de nacimiento") ?? null,
+    ruc:                        getField("Mi RUC es", "ruc", "RUC") ?? null,
+    doc_identidad_extranjera:   getField("Mi Documento de identidad extranjera es", "doc_identidad_extranjera") ?? null,
+    cert_residencia_permanente: getUploadUrl(getField("Certificado de resiedencia permanente", "Certificado de residencia permanente")) ?? null,
+    metodo_cobro:               getField("¿Dónde quieres recibir el dinero?", "metodo_cobro") ?? null,
+    tipo_alias:                 getField("Por favor, elija tipo de alias👇", "tipo_alias") ?? null,
+    banco:                      getField("Ingrese su cuenta bancaria")?.first_name ?? null,
+    numero_cuenta:              getField("Ingrese su cuenta bancaria")?.last_name ?? null,
+    inforconf_limpio:           isYes(getField("¿Tenés Inforconf limpio?", "inforconf_limpio")),
+    antiguedad_laboral_6meses:  isYes(getField("¿Tenés más de 6 meses de antigüedad laboral?", "antiguedad_laboral_6meses")),
+    ingresos_mensuales:         parseFloat(getField("Ingresos aproximados por mes", "ingresos_mensuales")) || null,
+    perfil_laboral:             getField("Perfil laboral actual", "perfil_laboral") ?? null,
+    liquidaciones_ips:          getUploadUrl(getField("Subí tus liquidaciones de IPS (opcional)", "liquidaciones_ips")) ?? null,
+    formularios_iva:            getUploadUrl(getField("Subí tus formularios 120 de IVA (opcional)", "formularios_iva")) ?? null,
+    selfie_cedula:              getUploadUrl(getField("Por favor subí una foto con su cedula", "selfie_cedula")) ?? null,
     raw_data:                   body,
-    session_id:                 body.hidden?.session_id ?? body.hidden_fields?.session_id ?? body.variables?.session_id ?? fields["session_id"] ?? body.session_id ?? null,
+    session_id:                 body.hidden?.session_id ?? body.hidden_fields?.session_id ?? body.variables?.session_id ?? getField("session_id") ?? body.session_id ?? null,
   })
 
   if (error) {

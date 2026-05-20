@@ -11,6 +11,11 @@ interface ListDetailsProps {
     value: string;
     isPrimary?: boolean;
     style?: ViewStyle;
+    /**
+     * Elemento opcional renderizado junto al label (ej: InfoTooltip).
+     * Se posiciona a 3px de spacing desde el texto del label.
+     */
+    rightAccessory?: React.ReactNode;
 }
 
 export const ListDetails = ({
@@ -19,6 +24,7 @@ export const ListDetails = ({
     value,
     isPrimary = false,
     style,
+    rightAccessory,
 }: ListDetailsProps) => {
     return (
         <View style={[styles.container, isPrimary && styles.primaryContainer, style]}>
@@ -29,6 +35,11 @@ export const ListDetails = ({
                 <Text variant={isPrimary ? 'body' : 'subhead'} color={isPrimary ? 'white' : 'white80'}>
                     {label}
                 </Text>
+                {rightAccessory && (
+                    <View style={styles.accessory}>
+                        {rightAccessory}
+                    </View>
+                )}
             </View>
             <Text variant={isPrimary ? 'headline' : 'subhead'} color="white" numeric>
                 {value}
@@ -56,5 +67,9 @@ const styles = StyleSheet.create({
     },
     icon: {
         marginRight: Metrics.padding8,
+    },
+    /** 3px de spacing desde el label, como especificado en diseño */
+    accessory: {
+        marginLeft: 3,
     },
 });
