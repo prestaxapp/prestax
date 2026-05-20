@@ -37,21 +37,14 @@ interface TerminosScreenProps {
     loading?: boolean;
 }
 
-export const TERMINOS_TEXT = `2.4. El CLIENTE comprende y acepta VIVA REPRESENTACIONES S.A podrá tercerizar en otras empresas que no sean VIVA REPRESENTACIONES S.A. la revisión de la identidad del CLIENTE, la elegibilidad del CLIENTE para ser parte de este Contrato, o de recibir un producto o servicio proveído por VIVA REPRESENTACIONES S.A, entre otros. En tal sentido, el CLIENTE, para poder acceder a los servicios o productos ofrecidos por VIVA REPRESENTACIONES S.A. se obliga a otorgar verazmente a tales empresas tercerizadas todos los datos por éstas requeridas, incluyendo pero no limitándose a la autorización de la toma de una fotografía (retrato) de su rostro, y la toma de un archivo digital biométrico de su/s huella/s dactilar/es. Todos estos datos serán utilizados por VIVA REPRESENTACIONES S.A a efectos de analizar la elegibilidad del CLIENTE y también para fortalecer los procesos de seguridad y de prevención de fraude de la empresa.
+export const TERMINOS_TEXT = `1. TUS DATOS Y EVALUACIÓN
+En PRESTAX queremos darte la mejor opción. Por eso, al usar la app, nos das permiso para verificar tus datos, tu perfil crediticio y conectar tu perfil con la entidad financiera que mejor se adapte a tus necesidades. Comprendés y aceptás que, gracias a esta información, dicha entidad y empresas aliadas quedan facultadas para verificar tu perfil crediticio a través de los burós de crédito autorizados. Esto nos ayuda a conocer tu historial, procesar tu solicitud de manera ágil y protegerte de fraudes.
 
-Adicionalmente, los datos sobre los ingresos y situación patrimonial informados a VIVA REPRESENTACIONES S.A, en la manifestación de bienes, o en cualquier anexo firmado que integra este documento, podrán ser verificados por VIVA REPRESENTACIONES S.A o las empresas tercerizadas, en cumplimiento de las disposiciones legales vigentes.
+2. ESTAMOS EN CONTACTO
+Nos encanta estar conectados. Nos autorizás a que desde PRESTAX o a través de nuestras empresas aliadas te escribamos por WhatsApp, te llamemos, te mandemos SMS o correos electrónicos para notificarte cómo va tu solicitud, darte soporte o enviarte ofertas que te puedan interesar y beneficiar.
 
-2.5. El CLIENTE declara y acepta expresamente que autoriza a VIVA REPRESENTACIONES S.A. a consultar, verificar y compartir su información crediticia con cualquier entidad de información crediticia o base de datos que opere en el país, tales como INFORMCONF, RISK APTA u otras similares, en cualquier momento durante la vigencia del contrato y hasta su completa cancelación.
-
-2.6. Asimismo, el CLIENTE autoriza a VIVA REPRESENTACIONES S.A. a reportar cualquier información relacionada con el cumplimiento o incumplimiento de sus obligaciones contraídas en virtud del presente contrato ante las entidades de información crediticia mencionadas precedentemente.
-
-2.7. El CLIENTE reconoce haber sido debidamente informado de que la información mencionada en los puntos anteriores puede influir en futuras evaluaciones crediticias, y que la presente autorización tiene carácter irrevocable durante la vigencia del contrato.
-
-3. CONFIDENCIALIDAD DE LA INFORMACIÓN
-
-3.1. VIVA REPRESENTACIONES S.A. se compromete a mantener la confidencialidad de toda la información personal y financiera proporcionada por el CLIENTE, utilizándola únicamente para los fines establecidos en el presente contrato y en estricta conformidad con la Ley N° 1682/01 "Que reglamenta la información de carácter privado" y demás normativas aplicables.
-
-3.2. No obstante lo anterior, el CLIENTE presta su consentimiento para que VIVA REPRESENTACIONES S.A. pueda compartir su información con terceros en los casos previstos por la ley o cuando sea necesario para la ejecución del contrato.`;
+3. RESPONSABILIDAD LEGAL
+A los efectos de cumplimiento con la legislación vigente en Paraguay, el usuario comprende que la marca y plataforma PRESTAX son operadas de forma unipersonal por Santiago Ezequiel Henry Moreno con RUC 4926567-9, actuando exclusivamente como canal de conexión tecnológica, siendo las entidades financieras y terceros autorizados los responsables de realizar las consultas pertinentes en los burós de crédito locales para la concesión del servicio.`;
 
 export const TERMINOS_VERSION = 'v1.0';
 export const TERMINOS_HASH = sha256(TERMINOS_TEXT);
@@ -100,12 +93,6 @@ export const TerminosScreen: React.FC<TerminosScreenProps> = ({ onBack, onAccept
                         { useNativeDriver: true }
                     )}
                 >
-                    {/* ── 2. Subtítulo: "Crédito otorgado por VIVA" ── */}
-                    <View style={styles.subtitleRow}>
-                        <Text style={styles.subtitleText}>Crédito otorgado por </Text>
-                        <Image source={require('../../assets/Logo Container.png')} style={styles.logoImage} resizeMode="contain" />
-                    </View>
-
                     {/* ── 3. Texto legal ── */}
                     <Text style={styles.bodyText}>
                         {TERMINOS_TEXT}
