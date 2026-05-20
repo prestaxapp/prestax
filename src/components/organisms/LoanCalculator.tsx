@@ -90,7 +90,7 @@ export const LoanCalculator = () => {
         Keyboard.dismiss();
     }, [rawInput, handleAmountChange]);
 
-    const handleSubmit = useCallback(async () => {
+    const handleSubmit = useCallback(() => {
         if (loading) return;
 
         if (!loanDetails.isValid) {
@@ -102,27 +102,16 @@ export const LoanCalculator = () => {
         const newSessionId = generateSessionId();
         setSessionId(newSessionId);
 
-        setLoading(true);
-
+        // Crear pre_solicitud en Supabase (non-blocking — no detiene la UI)
         const { deviceModel, deviceOS } = getDeviceInfo();
-        const created = await createPreSolicitud({
+        createPreSolicitud({
             session_id: newSessionId,
             monto: amount,
             cuotas: effectiveMonths,
             cuota_mensual: loanDetails.monthlyQuota,
             device_model: deviceModel,
             device_os: deviceOS,
-        });
-
-        setLoading(false);
-
-        if (!created) {
-            Alert.alert(
-                'No pudimos iniciar la solicitud',
-                'Revisá tu conexión e intentá nuevamente. No vamos a avanzar sin registrar los datos iniciales.',
-            );
-            return;
-        }
+        }).catch(err => console.warn('Pre-solicitud send failed silently:', err));
 
         setScreen('confirm');
     }, [loading, loanDetails.isValid, amount, effectiveMonths, loanDetails.monthlyQuota]);
@@ -143,38 +132,27 @@ export const LoanCalculator = () => {
             return;
         }
 
-        setLoading(true);
-
-        const consentLogged = await logConsent({
+        // 1. Registrar consentimiento legal en Supabase (non-blocking)
+        logConsent({
             session_id: sessionId,
             consent_type: 'terminos_y_condiciones',
             consent_version: TERMINOS_VERSION,
             terms_hash: TERMINOS_HASH,
-        });
-
-        setLoading(false);
-
-        if (!consentLogged) {
-            Alert.alert(
-                'No pudimos registrar tu aceptación',
-                'Revisá tu conexión e intentá nuevamente antes de continuar.',
-            );
-            return;
-        }
+        }).catch(err => console.warn('Consent log failed silently:', err));
 
         // 2. Capturar info del dispositivo para Google Sheet
         const { deviceModel, deviceOS } = getDeviceInfo();
         const timestamp = new Date().toISOString();
 
         // 3. Enviar metadata al Google Sheet (mantener Excel existente)
-        void sendLeadMetadata({
+        sendLeadMetadata({
             session_id: sessionId,
             monto: amount,
             cuotas: effectiveMonths,
             deviceModel,
             deviceOS,
             timestamp,
-        });
+        }).catch(err => console.warn('Lead metadata send failed silently:', err));
 
         // 4. Transicionar a YouForm inmediatamente, sin esperar respuestas
         setScreen('youform');
